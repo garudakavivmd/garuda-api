@@ -1,0 +1,9 @@
+{
+  "name": "garuda-api",
+  "version": "1.0.0",
+  "description": "Garuda Construction Service API",
+  "main": "api/index.js",
+  "engines": {
+    "node": "20.x"
+  }
+}
