@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCS – Bill Lookup</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--gold:#C9A84C;--teal:#1abc9c;--bg:#111;--card:#181818;--bd:#2a2a2a;--tx:#e8e8e8;--mu:#777;--ok:#2ecc71;--er:#e74c3c;--wn:#f39c12;--pu:#9b59b6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans',sans-serif}
+header{background:linear-gradient(135deg,#0a0a0a,#1a1200);border-bottom:2px solid var(--gold);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:99}
+.logo{display:flex;align-items:center;gap:12px}
+.li{width:42px;height:42px;background:var(--gold);border-radius:8px;display:grid;place-items:center;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#000;flex-shrink:0}
+.ln{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--gold)}
+.ls{font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
+nav a{padding:7px 13px;border:1px solid var(--bd);border-radius:6px;color:var(--mu);text-decoration:none;font-size:12px;margin-left:6px;transition:.2s;font-family:'Rajdhani',sans-serif;font-weight:700}
+nav a:hover{border-color:var(--gold);color:var(--gold)}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 14px}
+.tabs{display:flex;gap:5px;background:#1a1a1a;border:1px solid var(--bd);border-radius:10px;padding:5px;margin-bottom:20px}
+.tab{flex:1;padding:10px;text-align:center;border-radius:7px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--mu);transition:.2s}
+.tab.on{background:var(--gold);color:#000}
+.pane{display:none}.pane.on{display:block}
+.box{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:18px}
+.bh{font-family:'Rajdhani',sans-serif;font-size:16px;color:var(--gold);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.bh.t{color:var(--teal)}
+.search-row{display:flex;gap:10px;flex-wrap:wrap}
+.search-row input,.search-row select{flex:1;min-width:180px;background:#202020;border:1px solid var(--bd);border-radius:8px;color:var(--tx);padding:12px 16px;font-size:14px;outline:none;font-family:inherit;transition:border .2s}
+.search-row input:focus,.search-row select:focus{border-color:var(--gold)}
+.search-row select option{background:#202020}
+.btn{padding:11px 22px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:.2s;letter-spacing:.5px}
+.bg{background:var(--gold);color:#000}.bg:hover{background:#d4a83a;transform:translateY(-1px)}
+.bt{background:var(--teal);color:#000}.bt:hover{background:#17a589;transform:translateY(-1px)}
+.bo{background:transparent;border:1px solid var(--gold);color:var(--gold)}.bo:hover{background:rgba(201,168,76,.1)}
+.bto{background:transparent;border:1px solid var(--teal);color:var(--teal)}.bto:hover{background:rgba(26,188,156,.1)}
+.br{background:rgba(231,76,60,.15);border:1px solid var(--er);color:var(--er)}
+.pending-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:4px}
+.pc{background:#111;border:1px solid var(--bd);border-radius:10px;padding:14px 16px;position:relative;cursor:pointer;transition:.2s}
+.pc:hover{border-color:var(--gold)}
+.pc.overdue{border-color:rgba(231,76,60,.4);background:#1a0a0a}
+.pc-name{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700}
+.pc-phone{font-size:12px;color:var(--mu);margin-top:2px}
+.pc-bill{font-size:11px;color:var(--mu);margin-top:4px}
+.pc-bal{font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700;margin-top:6px}
+.pc-due{font-size:11px;margin-top:3px}
+.od-tag{position:absolute;top:10px;right:10px;background:rgba(231,76,60,.2);border:1px solid var(--er);color:var(--er);border-radius:4px;font-size:10px;padding:2px 7px;font-family:'Rajdhani',sans-serif;font-weight:700}
+.summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.stat-card{background:#111;border:1px solid var(--bd);border-radius:9px;padding:12px 14px;text-align:center}
+.stat-card .sv{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700}
+.stat-card .sl{font-size:11px;color:var(--mu);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.bill-card{background:#111;border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:12px;cursor:pointer;transition:.2s}
+.bill-card:hover{border-color:var(--gold);background:#151500}
+.bill-card.ret-card:hover{border-color:var(--teal);background:#001510}
+.bc-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.bc-billno{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--gold)}
+.bc-billno.ret{color:var(--teal)}
+.bc-date{font-size:11px;color:var(--mu)}
+.bc-name{font-size:14px;font-weight:600;margin-top:4px}
+.bc-phone{font-size:12px;color:var(--mu)}
+.bc-items{font-size:12px;color:var(--mu);margin-top:6px}
+.bc-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.b-ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+.b-er{background:rgba(231,76,60,.12);color:var(--er);border:1px solid rgba(231,76,60,.3)}
+.b-pu{background:rgba(155,89,182,.12);color:var(--pu);border:1px solid rgba(155,89,182,.3)}
+.b-type{background:#222;color:var(--mu);border:1px solid var(--bd);font-size:10px;padding:2px 8px;border-radius:4px}
+.bc-bal{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700}
+.ac-wrap{position:relative;flex:1;min-width:200px}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:#1e1e1e;border:1px solid var(--gold);border-radius:0 0 8px 8px;z-index:50;max-height:220px;overflow-y:auto;display:none}
+.ac-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #2a2a2a;transition:.15s}
+.ac-item:hover{background:#2a2000;color:var(--gold)}
+.ac-item:last-child{border-bottom:none}
+.ac-item .ac-no{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);font-size:14px}
+.ac-item .ac-name{color:var(--tx);font-size:12px;margin-top:2px}
+.ac-item .ac-bal{font-size:11px;margin-top:1px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;overflow-y:auto;padding:14px}
+.mbox{max-width:720px;margin:18px auto;background:#fff;border-radius:12px;padding:34px;color:#111;font-family:'Noto Sans',Arial,sans-serif}
+.ma{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
+.toast{position:fixed;bottom:22px;right:22px;background:#222;border:1px solid var(--gold);color:var(--tx);padding:13px 18px;border-radius:10px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px;line-height:1.5}
+.toast.on{transform:translateY(0);opacity:1}
+.empty{text-align:center;color:var(--mu);font-size:13px;padding:30px}
+.loading{text-align:center;color:var(--mu);font-size:13px;padding:20px}
+.refresh-btn{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;transition:.2s}
+.refresh-btn:hover{background:rgba(201,168,76,.1)}
+.note{background:#181200;border-left:3px solid var(--gold);padding:10px 14px;font-size:12px;color:#aaa;margin-bottom:14px;border-radius:0 6px 6px 0;line-height:1.6}
+@media(max-width:600px){.search-row{flex-direction:column}.bc-top{flex-direction:column}.tabs{flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="li">GC</div>
+    <div>
+      <div class="ln">GARUDA CONSTRUCTION SERVICE</div>
+      <div class="ls">Bill Lookup &amp; Pending Balance</div>
+    </div>
+  </div>
+  <nav>
+    <a href="https://sites.google.com/view/gcskavi/main-products" target="_blank">🏗️ Main</a>
+    <a href="https://sites.google.com/view/gcskavi/sub-products" target="_blank">📦 Sub</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab on"  onclick="switchTab('search')">🔍 DISPATCH BILLS</div>
+    <div class="tab"     onclick="switchTab('returns')">📥 RETURN BILLS</div>
+    <div class="tab"     onclick="switchTab('pending')">💰 PENDING BALANCE</div>
+  </div>
+
+  <!-- ═══ TAB 1: DISPATCH SEARCH ═══ -->
+  <div id="pane-search" class="pane on">
+    <div class="box">
+      <div class="bh">🔍 Search Dispatch Bills</div>
+      <div class="note">Type Bill No (GCS-M-) / Customer Name / Mobile — auto-suggest appears after 2 characters</div>
+      <div class="search-row">
+        <div class="ac-wrap">
+          <input id="search-input" placeholder="Bill No / Name / Mobile" oninput="onAC(this.value,'d')" onkeydown="if(event.key==='Enter')searchBills()" autocomplete="off">
+          <div class="ac-list" id="ac-d"></div>
+        </div>
+        <select id="search-type">
+          <option value="all">All Types</option>
+          <option value="MAIN">Main Inventory</option>
+          <option value="SUB">Sub Inventory</option>
+        </select>
+        <button class="btn bg" onclick="searchBills()">🔍 Search</button>
+        <button class="btn bo" onclick="clearSearch()">✕ Clear</button>
+      </div>
+    </div>
+    <div id="results-box" style="display:none">
+      <div class="box">
+        <div class="bh">📋 Results <span id="results-count" style="font-size:12px;color:var(--mu);font-family:'Noto Sans'"></span></div>
+        <div id="results-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 2: RETURNS ═══ -->
+  <div id="pane-returns" class="pane">
+    <div class="box">
+      <div class="bh t">📥 Search Return Bills</div>
+      <div class="note" style="border-color:var(--teal)">Search by Return Bill No / Original Bill No / Customer Name / Mobile</div>
+      <div class="search-row">
+        <div class="ac-wrap">
+          <input id="ret-input" placeholder="Return Bill No / Orig Bill No / Name / Mobile" oninput="onAC(this.value,'r')" onkeydown="if(event.key==='Enter')searchReturns()" autocomplete="off">
+          <div class="ac-list" id="ac-r"></div>
+        </div>
+        <button class="btn bt" onclick="searchReturns()">🔍 Search</button>
+        <button class="btn bto" onclick="clearRet()">✕ Clear</button>
+      </div>
+    </div>
+    <div id="ret-results-box" style="display:none">
+      <div class="box">
+        <div class="bh t">📋 Return Results <span id="ret-count" style="font-size:12px;color:var(--mu);font-family:'Noto Sans'"></span></div>
+        <div id="ret-results-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 3: PENDING ═══ -->
+  <div id="pane-pending" class="pane">
+    <div class="box">
+      <div class="bh">💰 Live Pending Balances <button class="refresh-btn" onclick="loadPending()">⟳ Refresh</button></div>
+      <div class="summary-stats" id="pstats" style="display:none">
+        <div class="stat-card"><div class="sv" id="st-cnt" style="color:var(--wn)">0</div><div class="sl">Pending Bills</div></div>
+        <div class="stat-card"><div class="sv" id="st-od"  style="color:var(--er)">0</div><div class="sl">Overdue Bills</div></div>
+        <div class="stat-card"><div class="sv" id="st-tot" style="color:var(--er)">₹0</div><div class="sl">Total Outstanding</div></div>
+        <div class="stat-card"><div class="sv" id="st-ret" style="color:var(--pu)">₹0</div><div class="sl">Return Pending</div></div>
+      </div>
+      <div id="pending-grid" class="pending-grid"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="bill-modal">
+  <div class="mbox">
+    <div id="bill-content"></div>
+    <div class="ma">
+      <button class="btn br" onclick="cm('bill-modal')">✖ Close</button>
+      <button class="btn bg" onclick="dlPDF()">⬇ PDF</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="waDisp()">📲 WhatsApp</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="ret-modal">
+  <div class="mbox">
+    <div id="ret-content"></div>
+    <div class="ma">
+      <button class="btn br" onclick="cm('ret-modal')">✖ Close</button>
+      <button class="btn bt" onclick="dlRetPDF()">⬇ PDF</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="waRet()">📲 WhatsApp</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast-msg"></div>
+
+<script>
+var API='https://script.google.com/macros/s/AKfycbzzYO6VGGXQa4FnXJjpFAXVcmuGdXmRKnc89qRlWBfW_nhHM2mTGtGXNYFDKsl_3ixV8Q/exec';
+var curBill=null, curRet=null, allBills=[], allRets=[];
+
+window.addEventListener('load',function(){ loadPending(); prefetch(); });
+
+function el(id){return document.getElementById(id);}
+function cm(id){el(id).style.display='none';}
+function switchTab(t){
+  ['search','returns','pending'].forEach(function(n,i){
+    el('pane-'+n).classList.toggle('on',n===t);
+    document.querySelectorAll('.tab')[i].classList.toggle('on',n===t);
+  });
+}
+
+// ── PREFETCH ──────────────────────────────────────────────────
+function prefetch(){
+  fetch(API+'?action=getBills&q=').then(function(r){return r.json();}).then(function(d){if(d.status==='ok')allBills=d.bills||[];}).catch(function(){});
+  fetch(API+'?action=getReturns&q=').then(function(r){return r.json();}).then(function(d){if(d.status==='ok')allRets=d.returns||[];}).catch(function(){});
+}
+
+// ── AUTOCOMPLETE ─────────────────────────────────────────────
+function onAC(q,t){
+  var listId=t==='r'?'ac-r':'ac-d';
+  var list=el(listId);
+  q=q.trim().toLowerCase();
+  if(q.length<2){list.style.display='none';return;}
+  var src=t==='r'?allRets:allBills;
+  var m=src.filter(function(b){
+    var no=t==='r'?b.returnBillNo:b.billNo;
+    return (no||'').toLowerCase().indexOf(q)!==-1||
+           (b.originalBillNo||'').toLowerCase().indexOf(q)!==-1||
+           (b.customer||'').toLowerCase().indexOf(q)!==-1||
+           (b.phone||'').indexOf(q)!==-1;
+  }).slice(0,8);
+  if(!m.length){list.style.display='none';return;}
+  list.innerHTML=m.map(function(b){
+    var no=t==='r'?b.returnBillNo:b.billNo;
+    var fb=t==='r'?Number(b.finalBalance):Number(b.balance);
+    var bs=t==='r'
+      ?(fb<0?'<span style="color:var(--pu)">🟡 Refund ₹'+Math.abs(fb).toLocaleString('en-IN')+'</span>':fb<=0?'<span style="color:var(--ok)">✅ Paid</span>':'<span style="color:var(--er)">🔴 ₹'+fb.toLocaleString('en-IN')+'</span>')
+      :(fb>0?'<span style="color:var(--er)">🔴 ₹'+fb.toLocaleString('en-IN')+' pending</span>':'<span style="color:var(--ok)">✅ Paid</span>');
+    return '<div class="ac-item" onclick="selAC(\''+no+'\',\''+t+'\')">' +
+      '<div class="ac-no">'+no+(b.originalBillNo&&t==='r'?' ← '+b.originalBillNo:'')+'</div>' +
+      '<div class="ac-name">👤 '+b.customer+' &nbsp; 📞 '+b.phone+'</div>' +
+      '<div class="ac-bal">'+bs+'</div></div>';
+  }).join('');
+  list.style.display='block';
+}
+
+function selAC(v,t){
+  if(t==='r'){el('ret-input').value=v;el('ac-r').style.display='none';searchReturns();}
+  else{el('search-input').value=v;el('ac-d').style.display='none';searchBills();}
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.ac-wrap')){el('ac-d').style.display='none';el('ac-r').style.display='none';}
+});
+
+// ── SEARCH DISPATCH ───────────────────────────────────────────
+function searchBills(){
+  var q=el('search-input').value.trim(), typ=el('search-type').value;
+  if(!q){toast('⚠ Enter bill no / name / mobile');return;}
+  el('ac-d').style.display='none';
+  el('results-box').style.display='block';
+  el('results-list').innerHTML='<div class="loading">⟳ Searching…</div>';
+  el('results-count').textContent='';
+  fetch(API+'?action=getBills&q='+encodeURIComponent(q))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.status!=='ok'){el('results-list').innerHTML='<div class="empty">⚠ '+d.message+'</div>';return;}
+      var b=(d.bills||[]).filter(function(x){return typ==='all'||x.sheetType===typ;});
+      el('results-count').textContent='('+b.length+' found)';
+      el('results-list').innerHTML=b.length?b.map(rBC).join(''):'<div class="empty">No bills found for "'+q+'"</div>';
+    }).catch(function(e){el('results-list').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
+function clearSearch(){el('search-input').value='';el('results-box').style.display='none';el('results-list').innerHTML='';el('ac-d').style.display='none';}
+
+// ── SEARCH RETURNS ────────────────────────────────────────────
+function searchReturns(){
+  var q=el('ret-input').value.trim();
+  if(!q){toast('⚠ Enter bill no / name / mobile');return;}
+  el('ac-r').style.display='none';
+  el('ret-results-box').style.display='block';
+  el('ret-results-list').innerHTML='<div class="loading">⟳ Searching returns…</div>';
+  el('ret-count').textContent='';
+  fetch(API+'?action=getReturns&q='+encodeURIComponent(q))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.status!=='ok'){el('ret-results-list').innerHTML='<div class="empty">⚠ '+d.message+'</div>';return;}
+      var r=d.returns||[];
+      el('ret-count').textContent='('+r.length+' found)';
+      el('ret-results-list').innerHTML=r.length?r.map(rRC).join(''):'<div class="empty">No return bills found for "'+q+'"</div>';
+    }).catch(function(e){el('ret-results-list').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
+function clearRet(){el('ret-input').value='';el('ret-results-box').style.display='none';el('ret-results-list').innerHTML='';el('ac-r').style.display='none';}
+
+// ── RENDER CARDS ──────────────────────────────────────────────
+function rBC(b){
+  var ip=b.status==='PAID'||b.balance<=0;
+  var is=(b.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ');
+  return '<div class="bill-card" onclick=\'openB('+JSON.stringify(b)+')\'>' +
+    '<div class="bc-top"><div><div class="bc-billno">'+b.billNo+'</div><span class="b-type">'+(b.sheetType||'MAIN')+'</span></div>' +
+    '<div style="text-align:right"><div class="bc-date">'+b.date+'</div><span class="badge '+(ip?'b-ok':'b-er')+'">'+(ip?'✅ PAID':'⚠ PENDING')+'</span></div></div>' +
+    '<div class="bc-name">👤 '+b.customer+'</div>' +
+    '<div class="bc-phone">📞 '+b.phone+(b.address?' | 📍 '+b.address:'')+'</div>' +
+    '<div class="bc-items">📦 '+(is||'—')+'</div>' +
+    '<div class="bc-bottom"><div style="font-size:12px;color:var(--mu)">⏱ '+b.days+'d/'+b.months+'mo | OUT: '+fd(b.outDate)+'</div>' +
+    '<div class="bc-bal" style="color:'+(ip?'var(--ok)':'var(--er)')+'">'+(ip?'✅ PAID':'₹ '+Number(b.balance).toLocaleString('en-IN')+' pending')+'</div></div></div>';
+}
+
+function rRC(r){
+  var fb=Number(r.finalBalance), isRef=fb<0, ip=r.status==='FULLY PAID'||fb<=0;
+  var is=(r.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ');
+  var sb=isRef?'<span class="badge b-pu">🟡 REFUND DUE</span>':ip?'<span class="badge b-ok">✅ FULLY PAID</span>':'<span class="badge b-er">⚠ BALANCE DUE</span>';
+  return '<div class="bill-card ret-card" onclick=\'openR('+JSON.stringify(r)+')\'>' +
+    '<div class="bc-top"><div><div class="bc-billno ret">'+r.returnBillNo+'</div><span class="b-type" style="border-color:var(--teal);color:var(--teal)">RETURN</span></div>' +
+    '<div style="text-align:right"><div class="bc-date">Ref: '+r.originalBillNo+'</div>'+sb+'</div></div>' +
+    '<div class="bc-name">👤 '+r.customer+'</div><div class="bc-phone">📞 '+r.phone+'</div>' +
+    '<div class="bc-items">📦 Returned: '+(is||'—')+'</div>' +
+    '<div class="bc-bottom"><div style="font-size:12px;color:var(--mu)">⏱ Actual: '+r.actualDays+'d/'+r.actualMonths+'mo | '+fd(r.returnDate)+'</div>' +
+    '<div class="bc-bal" style="color:'+(isRef?'var(--pu)':ip?'var(--ok)':'var(--er)')+'">'+(isRef?'🟡 Refund ₹'+Math.abs(fb).toLocaleString('en-IN'):ip?'✅ PAID':'🔴 ₹'+fb.toLocaleString('en-IN')+' due')+'</div></div></div>';
+}
+
+// ── OPEN MODALS ───────────────────────────────────────────────
+function openB(b){curBill=b; el('bill-content').innerHTML=mkD(b); el('bill-modal').style.display='block';}
+function openR(r){curRet=r;  el('ret-content').innerHTML=mkR(r);  el('ret-modal').style.display='block';}
+
+// ── DISPATCH HTML ─────────────────────────────────────────────
+function mkD(b){
+  var ac='#C9A84C',bg='#0D0D0D', ip=b.status==='PAID'||b.balance<=0;
+  var rows=(b.items||[]).map(function(it){
+    return '<tr style="border-bottom:1px solid #f0e8cc"><td style="padding:9px 13px">'+it.name+'</td>' +
+      '<td style="padding:9px;text-align:center">'+it.qty+'</td>' +
+      '<td style="padding:9px;text-align:center">₹'+it.price+'/'+(it.type==='per day'?'day':'mo')+'</td>' +
+      '<td style="padding:9px;text-align:center;color:#777">'+b.days+'d/'+b.months+'mo</td>' +
+      '<td style="padding:9px 13px;text-align:right;font-weight:700">₹'+Number(it.amount).toLocaleString('en-IN')+'</td></tr>';
+  }).join('');
+  return '<div style="font-family:\'Noto Sans\',Arial,sans-serif;color:#111">' +
+    '<div style="background:'+bg+';padding:22px 26px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><div style="color:'+ac+';font-size:19px;font-weight:700">GARUDA CONSTRUCTION SERVICE</div>' +
+      '<div style="color:#666;font-size:10px;letter-spacing:2px;margin-top:4px">DISPATCH BILL — '+(b.sheetType||'MAIN')+'</div></div>' +
+      '<div style="text-align:right"><div style="color:'+ac+';font-weight:700;font-size:13px">'+b.billNo+'</div>' +
+      '<div style="color:#aaa;font-size:11px;margin-top:3px">'+b.date+'</div></div></div>' +
+    '<div style="background:#faf7ef;padding:14px 26px;display:grid;grid-template-columns:1fr 1fr;gap:10px;border-bottom:2px solid #e8dfc0">' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Customer</div><div style="font-weight:700;font-size:14px;margin-top:2px">'+b.customer+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Contact</div><div style="font-weight:600;margin-top:2px">'+b.phone+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Site</div><div style="margin-top:2px">'+(b.address||'—')+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Period</div><div style="font-size:12px;margin-top:2px">'+fd(b.outDate)+' → '+fd(b.inDate)+'<br><b style="color:'+ac+'">'+b.days+'d / '+b.months+'mo</b></div></div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:'+ac+'">' +
+      '<th style="padding:9px 13px;text-align:left;color:#000">Product</th><th style="padding:9px;text-align:center;color:#000">Qty</th>' +
+      '<th style="padding:9px;text-align:center;color:#000">Rate</th><th style="padding:9px;text-align:center;color:#000">Duration</th>' +
+      '<th style="padding:9px 13px;text-align:right;color:#000">Amount</th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table>' +
+    '<div style="background:#f5efe0;padding:16px 26px">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental</span><span>₹'+Number(b.total).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Advance Paid</span><span style="color:green">₹'+Number(b.advance).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Balance Due</span>' +
+        '<span style="color:'+(ip?'green':'#c0392b')+'">'+(ip?'✅ FULLY PAID':'₹'+Number(b.balance).toLocaleString('en-IN'))+'</span></div>' +
+    '</div>' +
+    '<div style="background:'+bg+';padding:11px 26px;text-align:center;color:#555;font-size:11px;border-radius:0 0 10px 10px">' +
+      'Garuda Construction Service | karudakavivdm@gmail.com | Return all materials in good condition.</div></div>';
+}
+
+// ── RETURN HTML ───────────────────────────────────────────────
+function mkR(r){
+  var ac='#1abc9c',bg='#0a1f16', fb=Number(r.finalBalance), isRef=fb<0, ip=r.status==='FULLY PAID'||fb<=0;
+  var rows=(r.items||[]).map(function(it){
+    return '<tr style="border-bottom:1px solid #d5ede8">' +
+      '<td style="padding:9px 13px">'+it.name+'</td>' +
+      '<td style="padding:9px;text-align:center;font-weight:700">'+it.qty+'</td></tr>';
+  }).join('');
+  var balSec = isRef
+    ? '<div style="background:#f0e8ff;border:2px solid #9b59b6;border-radius:8px;padding:14px;margin-top:12px;text-align:center">' +
+        '<div style="font-size:12px;color:#666;margin-bottom:4px">🟡 REFUND DUE TO CUSTOMER</div>' +
+        '<div style="font-size:26px;font-weight:700;color:#9b59b6">₹ '+Math.abs(fb).toLocaleString('en-IN')+'</div>' +
+        '<div style="font-size:11px;color:#888;margin-top:4px">Customer overpaid — please refund this amount</div></div>'
+    : ip
+      ? '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Final Balance</span><span style="color:green">✅ FULLY PAID</span></div>'
+      : '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Balance Due</span><span style="color:#c0392b">₹'+fb.toLocaleString('en-IN')+'</span></div>';
+  return '<div style="font-family:\'Noto Sans\',Arial,sans-serif;color:#111">' +
+    '<div style="background:'+bg+';padding:22px 26px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><div style="color:'+ac+';font-size:19px;font-weight:700">GARUDA CONSTRUCTION SERVICE</div>' +
+      '<div style="color:#666;font-size:10px;letter-spacing:2px;margin-top:4px">RETURN RECEIPT</div></div>' +
+      '<div style="text-align:right"><div style="color:'+ac+';font-weight:700;font-size:13px">'+r.returnBillNo+'</div>' +
+      '<div style="color:#aaa;font-size:11px;margin-top:3px">Ref: '+r.originalBillNo+'</div></div></div>' +
+    '<div style="background:#f0faf6;padding:14px 26px;display:grid;grid-template-columns:1fr 1fr;gap:10px;border-bottom:2px solid #c8eadf">' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Customer</div><div style="font-weight:700;font-size:14px;margin-top:2px">'+r.customer+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Contact</div><div style="font-weight:600;margin-top:2px">'+r.phone+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Return Date</div><div style="font-size:12px;margin-top:2px">'+fd(r.returnDate)+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Actual Duration</div><div style="margin-top:2px"><b style="color:'+ac+'">'+r.actualDays+'d / '+r.actualMonths+'mo</b></div></div>' +
+      (r.notes?'<div style="grid-column:1/-1"><div style="color:#999;font-size:10px;text-transform:uppercase">Notes</div><div style="font-size:12px;margin-top:2px">'+r.notes+'</div></div>':'') +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:'+ac+'">' +
+      '<th style="padding:9px 13px;text-align:left;color:#000">Items Returned</th>' +
+      '<th style="padding:9px;text-align:center;color:#000">Qty</th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table>' +
+    '<div style="background:#e8f5f0;padding:16px 26px">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental (Recalculated)</span><span>₹'+Number(r.totalRental).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Previous Advance Paid</span><span style="color:green">₹'+Number(r.prevAdvance).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Additional Payment Now</span><span style="color:green">₹'+Number(r.additionalPay).toLocaleString('en-IN')+'</span></div>' +
+      balSec +
+    '</div>' +
+    '<div style="background:'+bg+';padding:11px 26px;text-align:center;color:#555;font-size:11px;border-radius:0 0 10px 10px">' +
+      'Garuda Construction Service | karudakavivdm@gmail.com</div></div>';
+}
+
+// ── PDF DISPATCH ──────────────────────────────────────────────
+function dlPDF(){
+  if(!curBill)return; var b=curBill;
+  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(10,10,10);doc.rect(0,0,210,297,'F');
+  doc.setTextColor(201,168,76);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('GARUDA CONSTRUCTION SERVICE',14,18);
+  doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('DISPATCH BILL — '+(b.sheetType||'MAIN')+' INVENTORY',14,25);
+  doc.setTextColor(140,140,140);doc.text(b.billNo,145,16);doc.text(b.date,145,22);
+  doc.setDrawColor(201,168,76);doc.line(14,31,196,31);
+  doc.setTextColor(195,195,195);doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Customer : '+b.customer,14,39);doc.text('Phone    : '+b.phone,14,46);
+  doc.text('Address  : '+(b.address||'—').slice(0,35),14,53);
+  doc.text('OUT      : '+fd(b.outDate),100,39);doc.text('IN       : '+fd(b.inDate),100,46);
+  doc.text('Duration : '+b.days+'d / '+b.months+'mo',100,53);
+  doc.line(14,58,196,58);doc.setFillColor(201,168,76);doc.rect(14,61,182,8,'F');
+  doc.setTextColor(0);doc.setFont('helvetica','bold');doc.setFontSize(9);
+  doc.text('Product',16,67);doc.text('Qty',109,67);doc.text('Rate',127,67);doc.text('Duration',151,67);doc.text('Amount',175,67);
+  var y=79;doc.setFont('helvetica','normal');doc.setTextColor(195,195,195);doc.setFontSize(9);
+  (b.items||[]).forEach(function(it){
+    doc.text(it.name.slice(0,26),16,y);doc.text(String(it.qty),111,y);
+    doc.text('Rs'+it.price+'/'+(it.type==='per day'?'day':'mo'),126,y);
+    doc.text(b.days+'d/'+b.months+'mo',154,y);doc.text('Rs'+Number(it.amount).toLocaleString('en-IN'),173,y);y+=9;
+  });
+  doc.setDrawColor(201,168,76);doc.line(14,y+2,196,y+2);y+=11;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(195,195,195);
+  doc.text('Total Rental : Rs '+Number(b.total).toLocaleString('en-IN'),120,y);y+=9;
+  doc.setTextColor(46,204,113);doc.text('Advance Paid : Rs '+Number(b.advance).toLocaleString('en-IN'),120,y);y+=9;
+  var ip=b.status==='PAID'||b.balance<=0;
+  doc.setTextColor(ip?46:231,ip?204:76,ip?113:60);
+  doc.text('Balance Due  : '+(ip?'FULLY PAID':'Rs '+Number(b.balance).toLocaleString('en-IN')),120,y);
+  y+=14;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+  doc.text('Thank you for choosing Garuda Construction Service.',14,y);
+  doc.save(b.billNo+'_'+b.customer.replace(/\s+/g,'_')+'.pdf');toast('✅ PDF downloaded');
+}
+
+// ── PDF RETURN ────────────────────────────────────────────────
+function dlRetPDF(){
+  if(!curRet)return; var r=curRet, fb=Number(r.finalBalance);
+  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(0,26,18);doc.rect(0,0,210,297,'F');
+  doc.setTextColor(26,188,156);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('GARUDA CONSTRUCTION SERVICE',14,18);
+  doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('RETURN RECEIPT',14,25);
+  doc.setTextColor(140,140,140);doc.text(r.returnBillNo,145,16);doc.text('Ref: '+r.originalBillNo,145,22);
+  doc.setDrawColor(26,188,156);doc.line(14,31,196,31);
+  doc.setTextColor(195,195,195);doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Customer : '+r.customer,14,39);doc.text('Phone    : '+r.phone,14,46);
+  doc.text('Return   : '+fd(r.returnDate),100,39);doc.text('Actual   : '+r.actualDays+'d / '+r.actualMonths+'mo',100,46);
+  doc.line(14,58,196,58);doc.setFillColor(26,188,156);doc.rect(14,61,182,8,'F');
+  doc.setTextColor(0);doc.setFont('helvetica','bold');doc.setFontSize(9);
+  doc.text('Item Returned',16,67);doc.text('Qty',175,67);
+  var y=79;doc.setFont('helvetica','normal');doc.setTextColor(195,195,195);doc.setFontSize(9);
+  (r.items||[]).forEach(function(it){doc.text(it.name.slice(0,30),16,y);doc.text(String(it.qty),175,y);y+=9;});
+  doc.setDrawColor(26,188,156);doc.line(14,y+2,196,y+2);y+=11;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(195,195,195);
+  doc.text('Total Rental   : Rs '+Number(r.totalRental).toLocaleString('en-IN'),120,y);y+=9;
+  doc.setTextColor(46,204,113);
+  doc.text('Prev Advance   : Rs '+Number(r.prevAdvance).toLocaleString('en-IN'),120,y);y+=9;
+  doc.text('Add Payment    : Rs '+Number(r.additionalPay).toLocaleString('en-IN'),120,y);y+=9;
+  if(fb<0){doc.setTextColor(155,89,182);doc.text('REFUND TO CUST : Rs '+Math.abs(fb).toLocaleString('en-IN'),120,y);}
+  else{doc.setTextColor(fb<=0?46:231,fb<=0?204:76,fb<=0?113:60);doc.text('Final Balance  : '+(fb<=0?'FULLY PAID':'Rs '+fb.toLocaleString('en-IN')),120,y);}
+  y+=14;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+  doc.text('Thank you for choosing Garuda Construction Service.',14,y);
+  doc.save(r.returnBillNo+'_'+r.customer.replace(/\s+/g,'_')+'.pdf');toast('✅ Return PDF downloaded');
+}
+
+// ── WHATSAPP ──────────────────────────────────────────────────
+function waDisp(){
+  if(!curBill)return; var b=curBill, ph=(b.phone||'').replace(/\D/g,''), wa=ph.startsWith('91')?ph:'91'+ph;
+  var msg='🏗️ *DISPATCH BILL — GARUDA*\n'+b.billNo+' | '+b.date+'\n👤 '+b.customer+' | 📞 '+b.phone+'\n📍 '+(b.address||'—')+'\n\nItems:\n'+
+    (b.items||[]).map(function(i){return '• '+i.name+': '+i.qty+' pcs = ₹'+Number(i.amount).toLocaleString('en-IN');}).join('\n')+
+    '\n\n⏱ '+b.days+' days\n💰 Total: ₹'+Number(b.total).toLocaleString('en-IN')+
+    '\n✅ Advance: ₹'+Number(b.advance).toLocaleString('en-IN')+
+    '\n⚠️ Balance: ₹'+Number(b.balance).toLocaleString('en-IN')+'\n\n🙏 Garuda Construction Service';
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
+}
+function waRet(){
+  if(!curRet)return; var r=curRet, fb=Number(r.finalBalance);
+  var ph=(r.phone||'').replace(/\D/g,''), wa=ph.startsWith('91')?ph:'91'+ph;
+  var msg='📦 *RETURN RECEIPT — GARUDA*\n'+r.returnBillNo+' | Ref: '+r.originalBillNo+'\n👤 '+r.customer+' | 📞 '+r.phone+
+    '\n\nReturned:\n'+(r.items||[]).map(function(i){return '• '+i.name+' × '+i.qty+' pcs';}).join('\n')+
+    '\n\n⏱ Actual: '+r.actualDays+' days\n💰 Total Rental: ₹'+Number(r.totalRental).toLocaleString('en-IN')+
+    '\n✅ Prev Advance: ₹'+Number(r.prevAdvance).toLocaleString('en-IN')+
+    '\n➕ Add Payment: ₹'+Number(r.additionalPay).toLocaleString('en-IN')+'\n'+
+    (fb<0?'\n🟡 REFUND TO YOU: ₹'+Math.abs(fb).toLocaleString('en-IN'):fb<=0?'\n✅ FULLY PAID':'\n🔴 Balance Due: ₹'+fb.toLocaleString('en-IN'))+
+    '\n\n🙏 Garuda Construction Service';
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ── PENDING PANEL ─────────────────────────────────────────────
+function loadPending(){
+  el('pending-grid').innerHTML='<div class="loading">⟳ Loading from Google Sheet…</div>';
+  el('pstats').style.display='none';
+  fetch(API+'?action=getPending').then(function(r){return r.json();}).then(function(d){
+    if(d.status!=='ok'){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+d.message+'</div>';return;}
+    if(!d.pending||!d.pending.length){el('pending-grid').innerHTML='<div class="empty">🎉 No pending balances! All cleared.</div>';return;}
+    var od=d.pending.filter(function(p){return p.overdue;}).length;
+    el('pstats').style.display='grid';
+    el('st-cnt').textContent=d.pending.length;
+    el('st-od').textContent=od;
+    el('st-tot').textContent='₹'+Number(d.total).toLocaleString('en-IN');
+    el('st-ret').textContent='₹0';
+    el('pending-grid').innerHTML=d.pending.map(function(p){
+      return '<div class="pc'+(p.overdue?' overdue':'')+'" onclick="qs(\''+p.billNo+'\')">' +
+        (p.overdue?'<span class="od-tag">OVERDUE</span>':'')+
+        '<div class="pc-name" style="color:'+(p.overdue?'var(--er)':'var(--tx)')+'">👤 '+p.customer+'</div>' +
+        '<div class="pc-phone">📞 '+p.phone+'</div>' +
+        '<div class="pc-bill">🧾 '+p.billNo+'</div>' +
+        '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>' +
+        '<div class="pc-due '+(p.overdue?'od':'ok')+'">'+(p.overdue?'🔴 Overdue — Due: ':'📅 Due: ')+fd(p.inDate)+'</div>' +
+        '<div style="font-size:10px;color:var(--mu);margin-top:6px">Tap to view bill →</div></div>';
+    }).join('');
+  }).catch(function(e){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
+
+function qs(bn){switchTab('search');el('search-input').value=bn;searchBills();}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function fd(s){
+  if(!s)return '—';
+  try{return new Date(s).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  catch(e){return String(s);}
+}
+function toast(msg,ms){
+  ms=ms||3500; var t=el('toast-msg'); t.textContent=msg; t.classList.add('on');
+  setTimeout(function(){t.classList.remove('on');},ms);
+}
+</script>
+</body>
+</html>
