@@ -115,6 +115,11 @@ tr:last-child td{border-bottom:none}
   <div class="cbar" id="api-status-bar">
     <span class="cdot" id="api-dot"></span>
     <span id="api-status-text">Connecting to database…</span>
+    &nbsp;|&nbsp;
+    <button onclick="downloadXL()" style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">⬇ Excel</button>
+    <label style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">
+      ⬆ Upload XL<input type="file" id="main-xl-file" accept=".xlsx,.xls" style="display:none" onchange="uploadXL(this)">
+    </label>
   </div>
 
   <div class="tabs">
@@ -306,7 +311,7 @@ tr:last-child td{border-bottom:none}
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // DEPLOYMENT URL
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = 'https://garuda-2wype3tsw-garudakavivmds-projects.vercel.app/api';
+const API_URL = 'https://garuda-api.vercel.app/api';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PRODUCTS  (fixed prices, main inventory)
