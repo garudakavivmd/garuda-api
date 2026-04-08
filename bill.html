@@ -99,14 +99,15 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
   <nav>
     <a href="https://sites.google.com/view/gcskavi/main-products" target="_blank">🏗️ Main</a>
     <a href="https://sites.google.com/view/gcskavi/sub-products" target="_blank">📦 Sub</a>
-    <a href="#" onclick="downloadExcel();return false;" style="border-color:var(--ok);color:var(--ok)">📥 Excel</a>
   </nav>
 </header>
 
 <div class="wrap">
-  <div style="background:#181200;border:1px solid #2a2000;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;font-size:12px" id="bill-api-bar">
-    <span style="width:7px;height:7px;border-radius:50%;background:var(--wn);flex-shrink:0;display:inline-block" id="bill-api-dot"></span>
-    <span id="bill-api-txt">Connecting…</span>
+  <div style="background:#181200;border:1px solid #2a2000;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px">
+    <span style="width:7px;height:7px;border-radius:50%;background:var(--wn);flex-shrink:0;animation:pu 2s infinite;display:inline-block" id="b-dot"></span>
+    <span id="b-txt">Connecting to Supabase…</span>
+    &nbsp;|&nbsp;
+    <button onclick="bDlXL()" style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">⬇ Download Excel</button>
   </div>
   <div class="tabs">
     <div class="tab on"  onclick="switchTab('search')">🔍 DISPATCH BILLS</div>
@@ -205,16 +206,7 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
 var API='https://garuda-api.vercel.app/api';
 var curBill=null, curRet=null, allBills=[], allRets=[];
 
-window.addEventListener('load',function(){
-  fetch(API+'?action=ping').then(function(r){return r.json();}).then(function(d){
-    var dot=document.getElementById('bill-api-dot');
-    var txt=document.getElementById('bill-api-txt');
-    if(d.status==='ok'){if(dot)dot.style.background='#2ecc71';if(txt)txt.textContent='✅ Connected to Supabase';}
-    else{if(dot)dot.style.background='#e74c3c';if(txt)txt.textContent='⚠ API error';}
-  }).catch(function(){
-    var dot=document.getElementById('bill-api-dot');var txt=document.getElementById('bill-api-txt');
-    if(dot)dot.style.background='#e74c3c';if(txt)txt.textContent='⚠ Cannot connect to API';
-  }); loadPending(); prefetch(); });
+window.addEventListener('load',function(){ loadPending(); prefetch(); });
 
 function el(id){return document.getElementById(id);}
 function cm(id){el(id).style.display='none';}
@@ -535,65 +527,6 @@ function loadPending(){
 
 function qs(bn){switchTab('search');el('search-input').value=bn;searchBills();}
 
-// ── EXCEL DOWNLOAD ───────────────────────────────────────────
-function downloadExcel() {
-  toast('⟳ Preparing Excel…', 5000);
-  fetch(API + '?action=getExcel')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if(d.status !== 'ok'){ toast('⚠ Error loading data'); return; }
-      
-      var sales   = d.sales   || [];
-      var returns = d.returns || [];
-      
-      // Build CSV for Sales
-      var sHead = ['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date'];
-      var sRows = sales.map(function(s){
-        return [s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,
-                s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
-                s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''].join(',');
-      });
-      
-      // Build CSV for Returns
-      var rHead = ['Return Bill No','Orig Bill No','Customer','Phone','Return Date','Actual Days','Actual Months','Total Rental','Prev Advance','Add Payment','Final Balance','Status','Notes'];
-      var rRows = returns.map(function(r){
-        return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,
-                r.return_date,r.actual_days,r.actual_months,r.total_rental,
-                r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''].join(',');
-      });
-
-      // Combine into one CSV with sections
-      var csv = 'GARUDA CONSTRUCTION SERVICE — SALES DATA
-
-';
-      csv += sHead.join(',') + '
-';
-      csv += sRows.join('
-');
-      csv += '
-
-
-GARUDA CONSTRUCTION SERVICE — RETURNS DATA
-
-';
-      csv += rHead.join(',') + '
-';
-      csv += rRows.join('
-');
-
-      // Download
-      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      var url  = URL.createObjectURL(blob);
-      var a    = document.createElement('a');
-      a.href   = url;
-      a.download = 'GCS_Data_' + new Date().toLocaleDateString('en-IN').replace(/\//g,'-') + '.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-      toast('✅ Excel downloaded! Open with Excel or Google Sheets');
-    })
-    .catch(function(e){ toast('⚠ Error: ' + e.message); });
-}
-
 // ── HELPERS ───────────────────────────────────────────────────
 function fd(s){
   if(!s)return '—';
@@ -604,6 +537,58 @@ function toast(msg,ms){
   ms=ms||3500; var t=el('toast-msg'); t.textContent=msg; t.classList.add('on');
   setTimeout(function(){t.classList.remove('on');},ms);
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// API PING
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function(){
+  fetch(API+'?action=ping')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var dot=document.getElementById('b-dot');
+      var txt=document.getElementById('b-txt');
+      if(d&&d.status==='ok'){if(dot)dot.style.background='#2ecc71';if(txt)txt.textContent='✅ Connected to Supabase';}
+      else{if(dot)dot.style.background='#e74c3c';if(txt)txt.textContent='⚠ API error';}
+    }).catch(function(){
+      var dot=document.getElementById('b-dot');var txt=document.getElementById('b-txt');
+      if(dot)dot.style.background='#e74c3c';
+      if(txt)txt.textContent='⚠ Cannot connect to API';
+    });
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXCEL DOWNLOAD (ALL DATA)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _bXL=false;
+function bDlXL(){
+  toast('⟳ Preparing Excel…',5000);
+  fetch(API+'?action=getExcel').then(function(r){return r.json();}).then(function(d){
+    if(!d||d.status!=='ok'){toast('⚠ '+(d?d.message:'Error'));return;}
+    if(!_bXL){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=function(){_bXL=true;_bMakeXL(d);};
+      document.head.appendChild(s);
+    } else { _bMakeXL(d); }
+  }).catch(function(e){toast('⚠ '+e.message);});
+}
+function _bMakeXL(d){
+  var wb=XLSX.utils.book_new();
+  var sh=['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Total','Advance','Balance','Status','Date'];
+  var sr=[sh].concat((d.sales||[]).map(function(s){return[s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.total,s.advance,s.balance,s.status,s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sr),'Sales_Info');
+  var rh=['Return Bill','Orig Bill','Customer','Phone','Return Date','Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
+  var rr=[rh].concat((d.returns||[]).map(function(r){return[r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rr),'Returns');
+  var ih=['Product','Total Stock','IN Qty','OUT Qty','Available'];
+  var im=[ih].concat((d.invMain||[]).map(function(r){return[r.product,r.total_stock,r.in_qty,r.out_qty,(r.total_stock||0)-(r.out_qty||0)+(r.in_qty||0)];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(im),'Inventory main');
+  var is=[ih].concat((d.invSub||[]).map(function(r){return[r.product,r.total_stock,r.in_qty,r.out_qty,(r.total_stock||0)-(r.out_qty||0)+(r.in_qty||0)];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(is),'inventory sub');
+  XLSX.writeFile(wb,'GCS_All_Data_'+new Date().toLocaleDateString('en-IN').replace(/[/]/g,'-')+'.xlsx');
+  toast('✅ Excel downloaded — all 4 sheets!');
+}
+
 </script>
 </body>
 </html>
