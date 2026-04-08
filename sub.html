@@ -58,17 +58,6 @@ tr:last-child td{border-bottom:none}
 .ma{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
 .toast{position:fixed;bottom:22px;right:22px;background:#222;border:1px solid var(--teal);color:var(--tx);padding:13px 18px;border-radius:10px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px;line-height:1.5}
 .toast.on{transform:translateY(0);opacity:1}
-.xl-bar{background:#001a14;border:1px solid #0a3a20;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.xl-bar label{font-size:12px;color:var(--mu);cursor:pointer;background:#001a10;border:1px dashed #1abc9c44;border-radius:6px;padding:8px 14px;transition:.2s}
-.xl-bar label:hover{border-color:var(--teal);color:var(--teal)}
-.xl-bar #sub-xl-status{font-size:12px;color:var(--ok)}
-.settle-box{background:#001a12;border:1px solid #0a3a20;border-radius:10px;padding:16px;margin-bottom:18px}
-.ac-wrap{position:relative}
-.ac-list{position:absolute;top:100%;left:0;right:0;background:#1e1e1e;border:1px solid var(--teal);border-radius:0 0 8px 8px;z-index:50;max-height:200px;overflow-y:auto;display:none}
-.ac-item{padding:9px 13px;cursor:pointer;font-size:12px;border-bottom:1px solid #2a2a2a}
-.ac-item:hover{background:#001a10;color:var(--teal)}
-.ac-item .ac-no{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--teal);font-size:13px}
-.ac-item .ac-meta{color:var(--mu);font-size:11px;margin-top:1px}
 .stock-panel{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:18px}
 .stock-panel .bh{margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
 .stock-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
@@ -101,33 +90,7 @@ tr:last-child td{border-bottom:none}
 </header>
 
 <div class="wrap">
-  <div class="cbar" id="api-status-bar">
-    <span class="cdot" id="api-dot"></span>
-    <span id="api-status-text">Connecting to database…</span>
-  </div>
-
-  <!-- EXCEL BAR -->
-  <div class="xl-bar">
-    <span style="font-size:12px;color:var(--mu)">📊 Sync inventory from Excel:</span>
-    <label>📁 Choose File <input type="file" id="sub-xl-file" accept=".xlsx,.xls" style="display:none" onchange="subUploadXL(this)"></label>
-    <span id="sub-xl-status"></span>
-    <button class="btn bt" style="padding:7px 14px;font-size:12px" onclick="document.getElementById('sub-xl-file').click()">⬆ Upload XL</button>
-    <button class="btn bto" style="padding:7px 14px;font-size:12px" onclick="subDownloadXL()">⬇ Download XL</button>
-  </div>
-
-  <!-- PAYMENT SETTLEMENT -->
-  <div class="settle-box">
-    <div class="bh" style="margin-bottom:10px">💳 Settle Pending Payment</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-      <div class="ac-wrap" style="flex:2;min-width:200px">
-        <input id="sub-settle-search" placeholder="Bill No / Customer Name / Mobile" oninput="subSettleAC(this.value)" autocomplete="off" style="background:#001a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit">
-        <div class="ac-list" id="sub-settle-ac" style="border-color:var(--teal)"></div>
-      </div>
-      <input id="sub-settle-amount" type="number" placeholder="Payment Amount (Rs)" min="0" style="flex:1;min-width:130px;background:#001a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;outline:none;font-family:inherit">
-      <button class="btn bt" onclick="subSettlePayment()">✅ Settle</button>
-    </div>
-    <div id="sub-settle-result" style="display:none;font-size:13px;padding:10px;background:#001a0a;border-radius:6px"></div>
-  </div>
+  <div class="cbar" id="sub-api-bar"><span class="cdot" id="sub-api-dot"></span><span id="sub-api-txt">Connecting…</span>&nbsp;|&nbsp;<button onclick="subDlXL()" style="background:none;border:1px solid #1abc9c55;border-radius:4px;color:#1abc9c;font-size:11px;padding:3px 10px;cursor:pointer">⬇ Excel</button><label style="background:none;border:1px solid #1abc9c55;border-radius:4px;color:#1abc9c;font-size:11px;padding:3px 10px;cursor:pointer">⬆ Upload XL<input type="file" id="sub-xl-inp" accept=".xlsx,.xls" style="display:none" onchange="subUlXL(this)"></label></div>
 
   <div class="tabs">
     <div class="tab on" onclick="switchTab('dispatch')">📤 DISPATCH ORDER</div>
@@ -141,7 +104,7 @@ tr:last-child td{border-bottom:none}
       <button class="refresh-btn" onclick="loadStock()">⟳ Refresh</button>
     </div>
     <div class="stock-grid" id="stock-grid">
-      <div class="stock-loading">Loading live stock from database…</div>
+      <div class="stock-loading">Loading live stock…</div>
     </div>
     <div style="font-size:11px;color:var(--mu);margin-top:10px">Last updated: <span id="stock-updated">—</span></div>
   </div>
@@ -211,18 +174,34 @@ tr:last-child td{border-bottom:none}
 
   </div><!-- /dispatch -->
 
+  <!-- SETTLE -->
+  <div style="background:#001a12;border:1px solid #0a3a20;border-radius:12px;padding:16px;margin-bottom:14px">
+    <div class="bh" style="margin-bottom:10px">💳 Settle Pending Payment</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+      <div style="position:relative;flex:2;min-width:200px">
+        <input id="ss-q" placeholder="Bill No / Customer Name / Mobile" oninput="ssAC(this.value)" autocomplete="off" style="background:#0a1a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit">
+        <div id="ss-ac" style="position:absolute;top:100%;left:0;right:0;background:#1e1e1e;border:1px solid var(--teal);border-radius:0 0 8px 8px;z-index:50;max-height:180px;overflow-y:auto;display:none"></div>
+      </div>
+      <input id="ss-amt" type="number" min="0" placeholder="Amount (Rs)" style="flex:1;min-width:120px;background:#0a1a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;outline:none;font-family:inherit">
+      <button class="btn bt" onclick="ssDo()">✅ Settle</button>
+    </div>
+    <div id="ss-info" style="margin-top:8px;font-size:12px;display:none;padding:8px 12px;background:#001a0a;border-radius:6px"></div>
+  </div>
+
   <!-- ━━━━━━ RETURN ━━━━━━ -->
   <div id="pane-return" class="pane">
-    <div class="box" style="background:#001a14;border-color:#0a3a20">
-      <div class="bh" style="margin-bottom:10px">🔍 Find Original Dispatch Bill</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <div class="ac-wrap" style="flex:1;min-width:200px">
-          <input id="sub-ret-search" placeholder="Bill No / Customer Name / Mobile" oninput="subRetAC(this.value)" autocomplete="off" style="background:#001a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit">
-          <div class="ac-list" id="sub-ret-ac"></div>
+
+    <div class="box" style="background:#001a12;border-color:#0a3a20;margin-bottom:14px">
+      <div class="bh" style="margin-bottom:10px">🔍 Auto-fill from Dispatch Bill</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div style="position:relative;flex:1;min-width:200px">
+          <input id="sr-q" placeholder="Bill No / Customer Name / Mobile" oninput="srAC(this.value)" autocomplete="off" style="background:#0a1a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit">
+          <div id="sr-ac" style="position:absolute;top:100%;left:0;right:0;background:#1e1e1e;border:1px solid var(--teal);border-radius:0 0 8px 8px;z-index:50;max-height:200px;overflow-y:auto;display:none"></div>
         </div>
-        <button class="btn bt" onclick="subFetchRetBill()">🔍 Fetch & Auto-fill</button>
+        <button class="btn bt" style="padding:10px 16px;font-size:13px" onclick="srFetch()">🔍 Fetch &amp; Fill</button>
+        <button class="btn bto" style="padding:10px 16px;font-size:13px" onclick="srClear()">✕ Clear</button>
       </div>
-      <div id="sub-ret-fetch-result" style="margin-top:10px;font-size:12px;color:var(--mu)"></div>
+      <div id="sr-info" style="margin-top:10px;font-size:12px;color:var(--mu)"></div>
     </div>
 
     <div class="box">
@@ -303,7 +282,7 @@ tr:last-child td{border-bottom:none}
 
 <script>
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const API_URL = 'https://garuda-2wype3tsw-garudakavivmds-projects.vercel.app/api';
+const API_URL = 'https://garuda-api.vercel.app/api';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ALL 8 SUB INVENTORY PRODUCTS
@@ -332,26 +311,6 @@ var currentMode = 'dispatch';
 // INIT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 window.addEventListener('load', function() {
-  // Check API connection
-  fetch(API_URL + '?action=ping')
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var dot  = document.getElementById('api-dot');
-      var text = document.getElementById('api-status-text');
-      if (d.status === 'ok') {
-        if(dot)  dot.style.background = 'var(--ok)';
-        if(text) text.textContent = '✅ Connected to Supabase Database';
-      } else {
-        if(dot)  dot.style.background = 'var(--er)';
-        if(text) text.textContent = '⚠ Database error: ' + d.message;
-      }
-    })
-    .catch(function(){
-      var dot  = document.getElementById('api-dot');
-      var text = document.getElementById('api-status-text');
-      if(dot)  dot.style.background = 'var(--er)';
-      if(text) text.textContent = '⚠ Cannot connect — check API URL';
-    });
   document.getElementById('sub-order-date').value = todayStr();
   document.getElementById('sub-ret-back').value   = nowDTStr();
 
@@ -724,11 +683,11 @@ function previewSubReturn() {
 function closeSubModal() { el('sub-modal').style.display = 'none'; }
 
 function sendToSheet(data) {
-  fetch(API_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(data)
-  }).catch(function(e) { console.error('Fetch error:', e); });
+  return fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  }).then(function(r){return r.json();}).catch(function(e){console.error('Fetch error:',e);});
 }
 
 function placeSubDispatch() {
@@ -899,112 +858,6 @@ function loadStock() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// EXCEL + SETTLE + AUTO-FILL (SUB)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-var XLSX_SUB=false;
-function loadXLSX_SUB(cb){if(XLSX_SUB){cb();return;}var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=function(){XLSX_SUB=true;cb();};document.head.appendChild(s);}
-function subUploadXL(input){
-  if(!input.files.length)return;
-  document.getElementById('sub-xl-status').textContent='⟳ Reading…';
-  loadXLSX_SUB(function(){
-    var reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(e.target.result,{type:'array'});
-        var invSub=[];
-        var ws=wb.Sheets['inventory sub']||wb.Sheets['Inventory sub'];
-        if(ws){var data=XLSX.utils.sheet_to_json(ws,{header:1});for(var i=1;i<data.length;i++){var r=data[i];if(r[1])invSub.push({product:r[1],total_stock:r[2]||0,in_qty:r[3]||0,out_qty:r[4]||0});}}
-        fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'uploadXL',invMain:[],invSub:invSub})})
-        .then(function(r){return r.json();}).then(function(d){
-          document.getElementById('sub-xl-status').textContent=d.status==='ok'?'✅ Synced!':'⚠ '+d.message;
-          if(d.status==='ok'){toast('✅ Synced!');loadStock();}
-        });
-      }catch(ex){document.getElementById('sub-xl-status').textContent='⚠ '+ex.message;}
-    };
-    reader.readAsArrayBuffer(input.files[0]);
-  });
-}
-function subDownloadXL(){
-  toast('⟳ Preparing…',5000);
-  fetch(API_URL+'?action=getExcel').then(function(r){return r.json();}).then(function(d){
-    if(d.status!=='ok'){toast('⚠ Error');return;}
-    loadXLSX_SUB(function(){
-      var wb=XLSX.utils.book_new();
-      var h=['S.No','Product','Total Stock','IN Qty','OUT Qty','Available'];
-      var rows=[h].concat((d.invSub||[]).map(function(r,i){return[i+1,r.product,r.total_stock,r.in_qty,r.out_qty,(r.total_stock||0)-(r.out_qty||0)+(r.in_qty||0)];}));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'inventory sub');
-      XLSX.writeFile(wb,'GCS_Sub_'+new Date().toLocaleDateString('en-IN').replace(/[/]/g,'-')+'.xlsx');
-      toast('✅ Excel downloaded!');
-    });
-  });
-}
-var subSettleBill=null,subSettleCache=[];
-function subSettleAC(q){
-  var list=document.getElementById('sub-settle-ac');
-  q=q.trim().toLowerCase();if(q.length<2){list.style.display='none';return;}
-  var m=subSettleCache.filter(function(b){return((b.billNo||'').toLowerCase().indexOf(q)!==-1||(b.customer||'').toLowerCase().indexOf(q)!==-1||(b.phone||'').indexOf(q)!==-1)&&b.balance>0;}).slice(0,8);
-  if(!m.length){fetch(API_URL+'?action=getBillById&id='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(d){if(d.status==='ok'&&d.bills){subSettleCache=subSettleCache.concat(d.bills);renderSubSettleAC(d.bills.filter(function(b){return b.balance>0;}));}});return;}
-  renderSubSettleAC(m);
-}
-function renderSubSettleAC(bills){
-  var list=document.getElementById('sub-settle-ac');
-  if(!bills.length){list.style.display='none';return;}
-  list.innerHTML=bills.map(function(b){return'<div class="ac-item" onclick='selSubSettle('+JSON.stringify(b).replace(/'/g,"\'")+')"><div class="ac-no">'+b.billNo+'</div><div class="ac-meta">👤 '+b.customer+' | 🔴 ₹'+Number(b.balance).toLocaleString('en-IN')+'</div></div>';}).join('');
-  list.style.display='block';
-}
-function selSubSettle(b){
-  subSettleBill=b;document.getElementById('sub-settle-search').value=b.billNo+' — '+b.customer;
-  document.getElementById('sub-settle-ac').style.display='none';
-  document.getElementById('sub-settle-result').style.display='block';
-  document.getElementById('sub-settle-result').innerHTML='<span style="color:var(--er);font-weight:700">🔴 Pending: ₹'+Number(b.balance).toLocaleString('en-IN')+'</span>';
-  document.getElementById('sub-settle-amount').value=b.balance;
-}
-function subSettlePayment(){
-  if(!subSettleBill){toast('⚠ Select a bill first');return;}
-  var amt=parseFloat(document.getElementById('sub-settle-amount').value)||0;
-  if(amt<=0){toast('⚠ Enter amount');return;}
-  fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'settlePayment',billNo:subSettleBill.billNo,payAmount:amt})})
-  .then(function(r){return r.json();}).then(function(d){
-    if(d.status==='ok'){
-      document.getElementById('sub-settle-result').innerHTML=d.newBalance<=0?'<span style="color:var(--ok);font-weight:700">✅ FULLY PAID!</span>':'<span style="color:var(--wn)">⚠ Remaining: ₹'+Number(d.newBalance).toLocaleString('en-IN')+'</span>';
-      toast('✅ Payment settled!');subSettleBill=null;document.getElementById('sub-settle-search').value='';document.getElementById('sub-settle-amount').value='';
-    }else{toast('⚠ '+d.message);}
-  });
-}
-var subRetCache=[];
-function subRetAC(q){
-  var list=document.getElementById('sub-ret-ac');q=q.trim().toLowerCase();if(q.length<2){list.style.display='none';return;}
-  var m=subRetCache.filter(function(b){return(b.billNo||'').toLowerCase().indexOf(q)!==-1||(b.customer||'').toLowerCase().indexOf(q)!==-1||(b.phone||'').indexOf(q)!==-1;}).slice(0,8);
-  if(!m.length){fetch(API_URL+'?action=getBillById&id='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(d){if(d.status==='ok'&&d.bills){subRetCache=subRetCache.concat(d.bills);renderSubRetAC(d.bills);}});return;}
-  renderSubRetAC(m);
-}
-function renderSubRetAC(bills){
-  var list=document.getElementById('sub-ret-ac');if(!bills.length){list.style.display='none';return;}
-  list.innerHTML=bills.map(function(b){return'<div class="ac-item" onclick='selSubRetBill('+JSON.stringify(b).replace(/'/g,"\'")+')'><div class="ac-no">'+b.billNo+'</div><div class="ac-meta">👤 '+b.customer+' | 📞 '+b.phone+'</div></div>';}).join('');
-  list.style.display='block';
-}
-function selSubRetBill(b){document.getElementById('sub-ret-search').value=b.billNo;document.getElementById('sub-ret-ac').style.display='none';subAutoFillReturn(b);}
-function subFetchRetBill(){
-  var q=document.getElementById('sub-ret-search').value.trim();if(!q){toast('⚠ Enter bill no');return;}
-  fetch(API_URL+'?action=getBillById&id='+encodeURIComponent(q)).then(function(r){return r.json();}).then(function(d){
-    if(d.status!=='ok'||!d.bills||!d.bills.length){document.getElementById('sub-ret-fetch-result').innerHTML='<span style="color:var(--er)">⚠ Not found</span>';return;}
-    subAutoFillReturn(d.bills[0]);
-  });
-}
-function subAutoFillReturn(b){
-  document.getElementById('sub-ret-ac').style.display='none';
-  if(document.getElementById('sub-ret-bill'))  document.getElementById('sub-ret-bill').value=b.billNo;
-  if(document.getElementById('sub-ret-name'))  document.getElementById('sub-ret-name').value=b.customer;
-  if(document.getElementById('sub-ret-phone')) document.getElementById('sub-ret-phone').value=b.phone;
-  if(document.getElementById('sub-ret-out'))   document.getElementById('sub-ret-out').value=b.outDate||'';
-  document.getElementById('sub-ret-fetch-result').innerHTML='<div style="background:#001a12;border:1px solid #0a3a20;border-radius:6px;padding:10px 14px;font-size:12px">✅ <b style="color:var(--teal)">Auto-filled!</b> 🧾 '+b.billNo+' | 👤 '+b.customer+'<br>📦 '+b.items.map(function(i){return i.name+' ×'+i.qty;}).join(', ')+'<br><span style="color:var(--er);font-weight:700">🔴 Pending: ₹'+Number(b.balance||0).toLocaleString('en-IN')+'</span></div>';
-  SUB_PRODUCTS.forEach(function(p){var found=b.items.find(function(i){return i.name.trim().toLowerCase()===p.name.trim().toLowerCase();});if(found&&document.getElementById('srq-'+p.id)){document.getElementById('srq-'+p.id).value=found.qty;retQty[p.id]=found.qty;}});
-  if(typeof calcSubReturn==='function')calcSubReturn();
-  toast('✅ Auto-filled: '+b.billNo);
-}
-document.addEventListener('click',function(e){if(!e.target.closest('.ac-wrap')){document.querySelectorAll('.ac-list').forEach(function(l){l.style.display='none';});}});
-
 // TOAST
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function toast(msg, ms) {
@@ -1017,3 +870,267 @@ function toast(msg, ms) {
 </script>
 </body>
 </html>
+
+<script>
+// ━━ NEW FEATURES — appended safely ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// API PING
+(function pingAPI(){
+  fetch(API_URL + '?action=ping')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var dot = document.getElementById('sub-api-dot');
+      var txt = document.getElementById('sub-api-txt');
+      if(d && d.status === 'ok'){
+        if(dot) dot.style.background = 'var(--ok)';
+        if(txt) txt.textContent = '✅ Connected to Supabase';
+      } else {
+        if(dot) dot.style.background = 'var(--er)';
+        if(txt) txt.textContent = '⚠ API error';
+      }
+    }).catch(function(){
+      var dot = document.getElementById('sub-api-dot');
+      var txt = document.getElementById('sub-api-txt');
+      if(dot) dot.style.background = 'var(--er)';
+      if(txt) txt.textContent = '⚠ Cannot connect to Vercel';
+    });
+})();
+
+// EXCEL — uses data stored in closure, no regex escaping
+var _xlLoaded = false;
+function _loadXLSX(cb){
+  if(_xlLoaded){ cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload = function(){ _xlLoaded = true; cb(); };
+  document.head.appendChild(s);
+}
+
+function subDlXL(){
+  toast('⟳ Preparing Excel…', 5000);
+  fetch(API_URL + '?action=getExcel')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || d.status !== 'ok'){ toast('⚠ ' + (d ? d.message : 'Error')); return; }
+      _loadXLSX(function(){
+        var wb = XLSX.utils.book_new();
+        var h1 = ['S.No','Product','Total Stock','IN Qty','OUT Qty','Available'];
+        var inv = [h1].concat((d.invSub || []).map(function(r, i){
+          return [i+1, r.product, r.total_stock, r.in_qty, r.out_qty,
+                  (Number(r.total_stock)||0) - (Number(r.out_qty)||0) + (Number(r.in_qty)||0)];
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(inv), 'inventory sub');
+        var h2 = ['Bill No','Customer','Phone','Address','OUT Date','IN Date','Days','Total','Advance','Balance','Status','Date'];
+        var sales = [h2].concat((d.sales || []).filter(function(s){ return s.sheet_type === 'SUB'; }).map(function(s){
+          return [s.bill_no, s.customer, s.phone, s.address||'', s.out_date, s.in_date,
+                  s.days, s.total, s.advance, s.balance, s.status,
+                  s.created_at ? new Date(s.created_at).toLocaleDateString('en-IN') : ''];
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sales), 'Sales_Info');
+        var h3 = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
+        var rets = [h3].concat((d.returns || []).map(function(r){
+          return [r.return_bill_no, r.original_bill_no, r.customer, r.phone,
+                  r.return_date, r.actual_days, r.total_rental, r.prev_advance,
+                  r.additional_pay, r.final_balance, r.status, r.notes||''];
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rets), 'Returns');
+        XLSX.writeFile(wb, 'GCS_Sub_' + new Date().toLocaleDateString('en-IN').replace(/\//g, '-') + '.xlsx');
+        toast('✅ Excel downloaded!');
+      });
+    }).catch(function(e){ toast('⚠ ' + e.message); });
+}
+
+function subUlXL(input){
+  if(!input.files.length) return;
+  toast('⟳ Reading Excel…', 5000);
+  _loadXLSX(function(){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        var wb = XLSX.read(ev.target.result, {type:'array'});
+        var ws = wb.Sheets['inventory sub'] || wb.Sheets['Inventory sub'] || wb.Sheets['inventory_sub'];
+        if(!ws){ toast('⚠ Sheet "inventory sub" not found'); return; }
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1});
+        var invSub = [];
+        for(var i = 1; i < rows.length; i++){
+          var r = rows[i];
+          if(r[1]) invSub.push({product: String(r[1]), total_stock: Number(r[2])||0, in_qty: Number(r[3])||0, out_qty: Number(r[4])||0});
+        }
+        if(!invSub.length){ toast('⚠ No data found'); return; }
+        fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({action:'uploadXL', invMain:[], invSub:invSub})
+        }).then(function(r){ return r.json(); }).then(function(d){
+          if(d && d.status === 'ok'){ toast('✅ Inventory synced!'); loadStock(); }
+          else toast('⚠ ' + (d ? d.message : 'Error'));
+        });
+      } catch(ex){ toast('⚠ Error: ' + ex.message); }
+    };
+    reader.readAsArrayBuffer(input.files[0]);
+  });
+}
+
+// RETURN AUTO-FILL — uses array cache, no JSON.stringify in DOM
+var _srCache = [];
+var _srSelected = null;
+
+function srAC(q){
+  var list = document.getElementById('sr-ac');
+  q = (q || '').trim().toLowerCase();
+  if(q.length < 2){ list.style.display = 'none'; return; }
+  var m = _srCache.filter(function(b){
+    return (b.billNo||'').toLowerCase().indexOf(q) !== -1 ||
+           (b.customer||'').toLowerCase().indexOf(q) !== -1 ||
+           (b.phone||'').indexOf(q) !== -1;
+  }).slice(0, 8);
+  if(!m.length){
+    fetch(API_URL + '?action=getBillById&id=' + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d && d.status === 'ok' && d.bills){ _srCache = _srCache.concat(d.bills); _srShow(d.bills); } });
+    return;
+  }
+  _srShow(m);
+}
+
+function _srShow(bills){
+  var list = document.getElementById('sr-ac');
+  if(!bills || !bills.length){ list.style.display = 'none'; return; }
+  // Store in cache with index
+  list.innerHTML = bills.map(function(b, i){
+    var idx = _srCache.indexOf(b);
+    if(idx === -1){ _srCache.push(b); idx = _srCache.length - 1; }
+    var bal = Number(b.balance) > 0 ? ' | <span style="color:var(--er)">🔴 ₹' + Number(b.balance).toLocaleString('en-IN') + '</span>' : '';
+    return '<div data-idx="' + idx + '" onclick="srPick(this)" style="padding:9px 13px;cursor:pointer;border-bottom:1px solid #2a2a2a;font-size:12px">' +
+      '<div style="color:var(--teal);font-weight:700;font-family:Rajdhani,sans-serif">' + b.billNo + '</div>' +
+      '<div style="color:var(--mu);font-size:11px">👤 ' + b.customer + ' | 📞 ' + b.phone + bal + '</div></div>';
+  }).join('');
+  list.style.display = 'block';
+}
+
+function srPick(el){
+  var idx = parseInt(el.getAttribute('data-idx'));
+  var b = _srCache[idx];
+  document.getElementById('sr-q').value = b.billNo;
+  document.getElementById('sr-ac').style.display = 'none';
+  _srFill(b);
+}
+
+function srFetch(){
+  var q = (document.getElementById('sr-q').value || '').trim();
+  if(!q){ toast('⚠ Enter bill no / name / mobile'); return; }
+  fetch(API_URL + '?action=getBillById&id=' + encodeURIComponent(q))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || d.status !== 'ok' || !d.bills || !d.bills.length){
+        document.getElementById('sr-info').innerHTML = '<span style="color:var(--er)">⚠ No bill found for "' + q + '"</span>';
+        return;
+      }
+      d.bills.length === 1 ? _srFill(d.bills[0]) : _srShow(d.bills);
+    }).catch(function(e){ toast('⚠ ' + e.message); });
+}
+
+function _srFill(b){
+  document.getElementById('sr-ac').style.display = 'none';
+  var fld = function(id, v){ var e = document.getElementById(id); if(e) e.value = v || ''; };
+  fld('sub-ret-bill',  b.billNo);
+  fld('sub-ret-name',  b.customer);
+  fld('sub-ret-phone', b.phone);
+  fld('sub-ret-out',   b.outDate);
+  // Pre-fill qty + price — uses srq- and srp- IDs from buildReturnTable
+  SUB_PRODUCTS.forEach(function(p){
+    var found = (b.items || []).find(function(i){ return i.name.trim().toLowerCase() === p.name.trim().toLowerCase(); });
+    if(found){
+      var qEl = document.getElementById('srq-' + p.id);
+      var pEl = document.getElementById('srp-' + p.id);
+      if(qEl){ qEl.value = found.qty; retQty[p.id] = found.qty; }
+      if(pEl && found.price){ pEl.value = found.price; retPrice[p.id] = found.price; }
+    }
+  });
+  calcSubReturn();
+  document.getElementById('sr-info').innerHTML =
+    '<div style="background:#001a12;border:1px solid #0a3a20;border-radius:6px;padding:10px 14px">' +
+    '✅ <b style="color:var(--teal)">Auto-filled!</b> 🧾 ' + b.billNo + ' | 👤 ' + b.customer + '<br>' +
+    '📦 ' + ((b.items||[]).map(function(i){ return i.name + ' ×' + i.qty; }).join(', ') || '—') + '<br>' +
+    '<span style="color:var(--er);font-weight:700">🔴 Pending Balance: ₹' + Number(b.balance||0).toLocaleString('en-IN') + '</span></div>';
+  toast('✅ Auto-filled from: ' + b.billNo);
+}
+
+function srClear(){
+  document.getElementById('sr-q').value = '';
+  document.getElementById('sr-ac').style.display = 'none';
+  document.getElementById('sr-info').innerHTML = '';
+}
+
+// PAYMENT SETTLEMENT — same safe pattern
+var _ssCache = [];
+
+function ssAC(q){
+  var list = document.getElementById('ss-ac');
+  q = (q || '').trim().toLowerCase();
+  if(q.length < 2){ list.style.display = 'none'; return; }
+  var m = _ssCache.filter(function(b){
+    return ((b.billNo||'').toLowerCase().indexOf(q) !== -1 ||
+            (b.customer||'').toLowerCase().indexOf(q) !== -1 ||
+            (b.phone||'').indexOf(q) !== -1) && Number(b.balance) > 0;
+  }).slice(0, 8);
+  if(!m.length){
+    fetch(API_URL + '?action=getBillById&id=' + encodeURIComponent(q))
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(d && d.status === 'ok' && d.bills){ _ssCache = _ssCache.concat(d.bills); _ssShow(d.bills.filter(function(b){ return Number(b.balance) > 0; })); } });
+    return;
+  }
+  _ssShow(m);
+}
+
+function _ssShow(bills){
+  var list = document.getElementById('ss-ac');
+  if(!bills || !bills.length){ list.style.display = 'none'; return; }
+  list.innerHTML = bills.map(function(b, i){
+    var idx = _ssCache.indexOf(b);
+    if(idx === -1){ _ssCache.push(b); idx = _ssCache.length - 1; }
+    return '<div data-idx="' + idx + '" onclick="ssPick(this)" style="padding:9px 13px;cursor:pointer;border-bottom:1px solid #2a2a2a;font-size:12px">' +
+      '<div style="color:var(--teal);font-weight:700;font-family:Rajdhani,sans-serif">' + b.billNo + '</div>' +
+      '<div style="color:var(--er);font-size:11px">👤 ' + b.customer + ' | 🔴 ₹' + Number(b.balance).toLocaleString('en-IN') + ' pending</div></div>';
+  }).join('');
+  list.style.display = 'block';
+}
+
+function ssPick(el){
+  var idx = parseInt(el.getAttribute('data-idx'));
+  var b = _ssCache[idx];
+  document.getElementById('ss-q').value = b.billNo + ' — ' + b.customer;
+  document.getElementById('ss-ac').style.display = 'none';
+  document.getElementById('ss-amt').value = b.balance;
+  var info = document.getElementById('ss-info');
+  info.style.display = 'block';
+  info.innerHTML = '<span style="color:var(--er);font-weight:700">🔴 Pending: ₹' + Number(b.balance).toLocaleString('en-IN') + '</span> | 👤 ' + b.customer + ' | 📞 ' + b.phone;
+  // store selected
+  document.getElementById('ss-q').setAttribute('data-billno', b.billNo);
+}
+
+function ssDo(){
+  var billNo = document.getElementById('ss-q').getAttribute('data-billno');
+  if(!billNo){ toast('⚠ Select a bill first'); return; }
+  var amt = parseFloat(document.getElementById('ss-amt').value) || 0;
+  if(amt <= 0){ toast('⚠ Enter payment amount'); return; }
+  fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'settlePayment', billNo: billNo, payAmount: amt})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d && d.status === 'ok'){
+      var info = document.getElementById('ss-info');
+      info.innerHTML = Number(d.newBalance) <= 0
+        ? '<span style="color:var(--ok);font-weight:700;font-size:15px">✅ FULLY PAID!</span>'
+        : '<span style="color:var(--wn);font-weight:700">⚠ Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN') + '</span>';
+      toast('✅ ₹' + Number(amt).toLocaleString('en-IN') + ' settled!');
+      document.getElementById('ss-q').value = '';
+      document.getElementById('ss-q').removeAttribute('data-billno');
+      document.getElementById('ss-amt').value = '';
+    } else { toast('⚠ ' + (d ? d.message : 'Error')); }
+  }).catch(function(e){ toast('⚠ ' + e.message); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('input') && !e.target.closest('[id$="-ac"]')){
+    ['sr-ac','ss-ac'].forEach(function(id){ var el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  }
+});
+</script>
