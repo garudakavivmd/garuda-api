@@ -1094,38 +1094,52 @@ function _ssShow(bills){
   list.style.display = 'block';
 }
 
+var _ssSelectedBillNo = null;
 function ssPick(el){
   var idx = parseInt(el.getAttribute('data-idx'));
   var b = _ssCache[idx];
+  _ssSelectedBillNo = b.billNo;
   document.getElementById('ss-q').value = b.billNo + ' — ' + b.customer;
   document.getElementById('ss-ac').style.display = 'none';
   document.getElementById('ss-amt').value = b.balance;
   var info = document.getElementById('ss-info');
   info.style.display = 'block';
   info.innerHTML = '<span style="color:var(--er);font-weight:700">🔴 Pending: ₹' + Number(b.balance).toLocaleString('en-IN') + '</span> | 👤 ' + b.customer + ' | 📞 ' + b.phone;
-  // store selected
-  document.getElementById('ss-q').setAttribute('data-billno', b.billNo);
 }
 
 function ssDo(){
-  var billNo = document.getElementById('ss-q').getAttribute('data-billno');
-  if(!billNo){ toast('⚠ Select a bill first'); return; }
+  // Get billNo from stored var OR from input text directly
+  var billNo = _ssSelectedBillNo || document.getElementById('ss-q').value.trim();
+  // If user typed manually (contains —), extract bill no part
+  if(billNo.indexOf(' — ') !== -1) billNo = billNo.split(' — ')[0].trim();
+  if(!billNo){ toast('⚠ Enter or select a bill number'); return; }
   var amt = parseFloat(document.getElementById('ss-amt').value) || 0;
   if(amt <= 0){ toast('⚠ Enter payment amount'); return; }
+  var info = document.getElementById('ss-info');
+  info.style.display='block';
+  info.innerHTML='<span style="color:var(--mu)">⟳ Processing…</span>';
   fetch(API_URL, {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'settlePayment', billNo: billNo, payAmount: amt})
   }).then(function(r){ return r.json(); }).then(function(d){
     if(d && d.status === 'ok'){
-      var info = document.getElementById('ss-info');
       info.innerHTML = Number(d.newBalance) <= 0
-        ? '<span style="color:var(--ok);font-weight:700;font-size:15px">✅ FULLY PAID!</span>'
-        : '<span style="color:var(--wn);font-weight:700">⚠ Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN') + '</span>';
-      toast('✅ ₹' + Number(amt).toLocaleString('en-IN') + ' settled!');
-      document.getElementById('ss-q').value = '';
-      document.getElementById('ss-q').removeAttribute('data-billno');
-      document.getElementById('ss-amt').value = '';
-    } else { toast('⚠ ' + (d ? d.message : 'Error')); }
-  }).catch(function(e){ toast('⚠ ' + e.message); });
+        ? '<span style="color:var(--ok);font-weight:700;font-size:15px">✅ FULLY PAID! Balance cleared.</span>'
+        : '<span style="color:var(--wn);font-weight:700">⚠ Partial paid. Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN') + '</span>';
+      toast('✅ ₹' + Number(amt).toLocaleString('en-IN') + ' settled for ' + billNo + '!');
+      _ssSelectedBillNo = null;
+      setTimeout(function(){
+        document.getElementById('ss-q').value = '';
+        document.getElementById('ss-amt').value = '';
+        info.style.display='none';
+      }, 3000);
+    } else {
+      info.innerHTML = '<span style="color:var(--er)">⚠ ' + (d ? d.message : 'Error') + '</span>';
+      toast('⚠ ' + (d ? d.message : 'Error'));
+    }
+  }).catch(function(e){
+    info.innerHTML = '<span style="color:var(--er)">⚠ Network error: ' + e.message + '</span>';
+    toast('⚠ ' + e.message);
+  });
 }
 
 document.addEventListener('click', function(e){
