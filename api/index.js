@@ -141,18 +141,52 @@ async function getReturns(req,res) {
   return ok(res,{returns,count:returns.length});
 }
 
-// ── GET PENDING ───────────────────────────────────────────────
+// ── GET PENDING — includes both dispatch pending + return balance due ──
 async function getPending(req,res) {
-  const rows = await sb(`sales?select=bill_no,customer,phone,balance,status,in_date,out_date,total,advance&balance=gt.0&status=neq.PAID&order=balance.desc`);
   const now = new Date();
-  const pending = rows.map(r=>({
-    billNo:r.bill_no, customer:r.customer, phone:r.phone,
-    balance:r.balance, inDate:r.in_date, outDate:r.out_date,
-    total:r.total, advance:r.advance,
-    overdue: r.in_date && new Date(r.in_date)<now
+
+  // 1. Dispatch bills with pending balance
+  const salesRows = await sb(`sales?select=bill_no,customer,phone,balance,status,in_date,out_date,total,advance&balance=gt.0&status=neq.PAID&order=balance.desc`);
+  const dispatchPending = salesRows.map(r=>({
+    billNo:    r.bill_no,
+    customer:  r.customer,
+    phone:     r.phone,
+    balance:   Number(r.balance)||0,
+    inDate:    r.in_date,
+    outDate:   r.out_date,
+    total:     r.total,
+    advance:   r.advance,
+    type:      'DISPATCH',
+    overdue:   r.in_date && new Date(r.in_date) < now
   }));
-  const total = pending.reduce((s,x)=>s+Number(x.balance),0);
-  return ok(res,{pending,total,count:pending.length});
+
+  // 2. Return bills with balance due (customer still owes)
+  const retRows = await sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status,return_date&final_balance=gt.0&status=neq.FULLY PAID&order=final_balance.desc`);
+  const returnPending = retRows.map(r=>({
+    billNo:    r.return_bill_no,
+    refBill:   r.original_bill_no,
+    customer:  r.customer,
+    phone:     r.phone,
+    balance:   Number(r.final_balance)||0,
+    inDate:    r.return_date,
+    type:      'RETURN',
+    overdue:   true
+  }));
+
+  // 3. Return bills where customer is owed a REFUND (negative balance)
+  const refundRows = await sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status&final_balance=lt.0&order=final_balance`);
+  const refunds = refundRows.map(r=>({
+    billNo:    r.return_bill_no,
+    refBill:   r.original_bill_no,
+    customer:  r.customer,
+    phone:     r.phone,
+    balance:   Number(r.final_balance)||0,
+    type:      'REFUND'
+  }));
+
+  const allPending = [...dispatchPending, ...returnPending];
+  const total = allPending.reduce((s,x)=>s+Number(x.balance),0);
+  return ok(res,{pending:allPending, refunds, total, count:allPending.length});
 }
 
 // ── GET EXCEL DATA ────────────────────────────────────────────
@@ -195,25 +229,46 @@ async function uploadXL(data,res) {
   } catch(e) { return err(res, e.message); }
 }
 
-// ── SETTLE PAYMENT (clear pending balance) ────────────────────
+// ── SETTLE PAYMENT — handles both DISPATCH and RETURN bills ──
 async function settlePayment(data,res) {
   try {
-    const {billNo, payAmount, notes} = data;
-    const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(billNo)}&select=id,balance,customer,phone`);
-    if (!sale.length) return err(res,'Bill not found: '+billNo);
-    const s       = sale[0];
-    const oldBal  = Number(s.balance)||0;
-    const paid    = Number(payAmount)||0;
-    const newBal  = Math.max(0, oldBal - paid);
-    await sb(`sales?id=eq.${s.id}`, 'PATCH', {
-      balance: newBal,
-      status:  newBal<=0 ? 'PAID' : 'PENDING'
-    });
+    const {billNo, payAmount, notes, type} = data;
+    const paid   = Number(payAmount)||0;
+    let oldBal   = 0;
+    let newBal   = 0;
+    let customer = '';
+    let phone    = '';
+
+    if (type === 'RETURN') {
+      // Settle return balance due
+      const ret = await sb(`returns?return_bill_no=eq.${encodeURIComponent(billNo)}&select=id,final_balance,customer,phone`);
+      if (!ret.length) return err(res,'Return bill not found: '+billNo);
+      const r = ret[0];
+      customer = r.customer; phone = r.phone;
+      oldBal   = Number(r.final_balance)||0;
+      newBal   = Math.max(0, oldBal - paid);
+      await sb(`returns?id=eq.${r.id}`, 'PATCH', {
+        final_balance: newBal,
+        status:        newBal<=0 ? 'FULLY PAID' : 'BALANCE DUE'
+      });
+    } else {
+      // Settle dispatch balance
+      const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(billNo)}&select=id,balance,customer,phone`);
+      if (!sale.length) return err(res,'Bill not found: '+billNo);
+      const s  = sale[0];
+      customer = s.customer; phone = s.phone;
+      oldBal   = Number(s.balance)||0;
+      newBal   = Math.max(0, oldBal - paid);
+      await sb(`sales?id=eq.${s.id}`, 'PATCH', {
+        balance: newBal,
+        status:  newBal<=0 ? 'PAID' : 'PENDING'
+      });
+    }
+
     await telegram(
       `💳 *Payment Settled — ${billNo}*\n` +
-      `👤 ${s.customer}  📞 ${s.phone}\n` +
-      `💰 Paid: ₹${fmt(paid)}\n` +
-      `📊 Old Balance: ₹${fmt(oldBal)}\n` +
+      `👤 ${customer}  📞 ${phone}\n` +
+      `💰 Paid: ₹${fmt(paid)} | Old Balance: ₹${fmt(oldBal)}\n` +
       (newBal<=0 ? `✅ *FULLY PAID*` : `🔴 Remaining: ₹${fmt(newBal)}`) +
       (notes ? `\n📝 ${notes}` : '')
     );
