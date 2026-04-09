@@ -914,9 +914,9 @@ function subDlXL(){
       if(!d || d.status !== 'ok'){ toast('⚠ ' + (d ? d.message : 'Error')); return; }
       _loadXLSX(function(){
         var wb = XLSX.utils.book_new();
-        var h1 = ['S.No','Product','Total Stock','IN Qty','OUT Qty','Available'];
+        var h1 = ['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
         var inv = [h1].concat((d.invSub || []).map(function(r, i){
-          return [i+1, r.product, r.total_stock, r.in_qty, r.out_qty,
+          return [i+1, r.product, Number(r.total_stock)||0, Number(r.in_qty)||0, Number(r.out_qty)||0,
                   (Number(r.total_stock)||0) - (Number(r.out_qty)||0) + (Number(r.in_qty)||0)];
         }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(inv), 'inventory sub');
