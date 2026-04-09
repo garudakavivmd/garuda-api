@@ -1038,16 +1038,17 @@ function downloadXL() {
         }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rData), 'Returns');
         // Inventory main
-        var iHead = ['S.No','Product','Total Stock','IN Qty','OUT Qty','Available'];
+        // IMPORTANT: col order [0=SNo, 1=Product, 2=TotalStock, 3=INQty, 4=OUTQty, 5=Available]
+        // Upload parser reads: r[1]=Product, r[2]=TotalStock, r[3]=INQty, r[4]=OUTQty
+        var iHead = ['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
         var iData = [iHead].concat((d.invMain||[]).map(function(r,i){
-          var avail = (r.total_stock||0) - (r.out_qty||0) + (r.in_qty||0);
-          return [i+1,r.product,r.total_stock,r.in_qty,r.out_qty,avail];
+          var avail = (Number(r.total_stock)||0) - (Number(r.out_qty)||0) + (Number(r.in_qty)||0);
+          return [i+1, r.product, Number(r.total_stock)||0, Number(r.in_qty)||0, Number(r.out_qty)||0, avail];
         }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(iData), 'Inventory main');
-        // Inventory sub
         var i2Data = [iHead].concat((d.invSub||[]).map(function(r,i){
-          var avail2 = (r.total_stock||0) - (r.out_qty||0) + (r.in_qty||0);
-          return [i+1,r.product,r.total_stock,r.in_qty,r.out_qty,avail2];
+          var avail2 = (Number(r.total_stock)||0) - (Number(r.out_qty)||0) + (Number(r.in_qty)||0);
+          return [i+1, r.product, Number(r.total_stock)||0, Number(r.in_qty)||0, Number(r.out_qty)||0, avail2];
         }));
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(i2Data), 'inventory sub');
         XLSX.writeFile(wb, 'GCS_Data_' + new Date().toLocaleDateString('en-IN').replace(/[/]/g,'-') + '.xlsx');
