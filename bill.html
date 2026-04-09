@@ -97,8 +97,8 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/main-products" target="_blank">🏗️ Main</a>
-    <a href="https://sites.google.com/view/garudakavi/sub-products" target="_blank">📦 Sub</a>
+    <a href="https://sites.google.com/view/gcskavi/main-products" target="_blank">🏗️ Main</a>
+    <a href="https://sites.google.com/view/gcskavi/sub-products" target="_blank">📦 Sub</a>
   </nav>
 </header>
 
@@ -113,6 +113,7 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
     <div class="tab on"  onclick="switchTab('search')">🔍 DISPATCH BILLS</div>
     <div class="tab"     onclick="switchTab('returns')">📥 RETURN BILLS</div>
     <div class="tab"     onclick="switchTab('pending')">💰 PENDING BALANCE</div>
+    <div class="tab"     onclick="switchTab('missing')">⚠️ MISSING ITEMS</div>
   </div>
 
   <!-- ═══ TAB 1: DISPATCH SEARCH ═══ -->
@@ -177,6 +178,18 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
       <div id="pending-grid" class="pending-grid"><div class="loading">Loading…</div></div>
     </div>
   </div>
+
+  <!-- ═══ TAB 4: MISSING MATERIALS ═══ -->
+  <div id="pane-missing" class="pane">
+    <div class="box">
+      <div class="bh" style="color:var(--wn)">⚠️ Missing / Pending Return Materials <button class="refresh-btn" style="border-color:var(--wn);color:var(--wn)" onclick="loadMissing()">⟳ Refresh</button></div>
+      <div class="note" style="border-color:var(--wn);background:#1a0f00">
+        Shows customers who returned items with <strong style="color:#eee">missing quantities</strong> or <strong style="color:#eee">partial returns</strong>. Materials not yet returned appear here.
+      </div>
+      <div id="missing-grid" style="margin-top:12px"><div class="loading">Click Refresh to load missing materials report</div></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- MODALS -->
@@ -211,10 +224,12 @@ window.addEventListener('load',function(){ loadPending(); prefetch(); });
 function el(id){return document.getElementById(id);}
 function cm(id){el(id).style.display='none';}
 function switchTab(t){
-  ['search','returns','pending'].forEach(function(n,i){
+  ['search','returns','pending','missing'].forEach(function(n,i){
     el('pane-'+n).classList.toggle('on',n===t);
     document.querySelectorAll('.tab')[i].classList.toggle('on',n===t);
   });
+  if(t==='missing') loadMissing();
+  if(t==='pending') loadPending();
 }
 
 // ── PREFETCH ──────────────────────────────────────────────────
@@ -740,4 +755,116 @@ function smSubmit() {
 document.getElementById('settle-modal').addEventListener('click', function(e){
   if (e.target === this) smClose();
 });
+</script>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MISSING MATERIALS TAB
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function loadMissing(){
+  var grid = document.getElementById('missing-grid');
+  grid.innerHTML = '<div class="loading">⟳ Loading return data…</div>';
+
+  fetch(API+'?action=getReturns&q=')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || d.status !== 'ok'){
+        grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ ' + (d?d.message:'Error') + '</div>';
+        return;
+      }
+      var rets = (d.returns||[]).filter(function(r){
+        return (r.items||[]).some(function(i){ return Number(i.missing||0) > 0; }) ||
+               (r.finalBalance > 0);
+      });
+
+      if(!rets.length){
+        grid.innerHTML = '<div class="empty">🎉 No missing materials! All items fully returned.</div>';
+        return;
+      }
+
+      grid.innerHTML = rets.map(function(r){
+        var missItems = (r.items||[]).filter(function(i){ return Number(i.missing||0) > 0; });
+        var fb = Number(r.finalBalance);
+        var missHtml = missItems.length
+          ? '<div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);text-transform:uppercase;margin-bottom:6px">Missing Items:</div>'+
+            '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+            '<tr style="background:#1a1200"><th style="padding:6px 10px;text-align:left;color:var(--wn)">Product</th><th style="padding:6px;text-align:center;color:var(--wn)">Dispatched</th><th style="padding:6px;text-align:center;color:var(--wn)">Returned</th><th style="padding:6px;text-align:center;color:var(--er)">Missing</th></tr>'+
+            missItems.map(function(i){
+              var ret = Number(i.qty||0);
+              var miss = Number(i.missing||0);
+              var disp = ret + miss;
+              return '<tr style="border-bottom:1px solid #2a1a00"><td style="padding:6px 10px">'+i.name+'</td>'+
+                '<td style="padding:6px;text-align:center;color:var(--mu)">'+disp+'</td>'+
+                '<td style="padding:6px;text-align:center;color:var(--ok)">'+ret+'</td>'+
+                '<td style="padding:6px;text-align:center;color:var(--er);font-weight:700">⚠ '+miss+'</td></tr>';
+            }).join('')+'</table></div>'
+          : '';
+
+        return '<div class="pc" style="border-color:rgba(243,156,18,.4);margin-bottom:12px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'+
+            '<div><div class="pc-name">👤 '+r.customer+'</div>'+
+            '<div class="pc-phone">📞 '+r.phone+'</div>'+
+            '<div class="pc-bill" style="color:var(--teal)">🧾 '+r.returnBillNo+'</div>'+
+            '<div style="font-size:11px;color:var(--mu)">Ref: '+r.originalBillNo+'</div></div>'+
+            '<div style="text-align:right">'+
+              (missItems.length ? '<div style="background:rgba(231,76,60,.15);border:1px solid var(--er);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--er);font-weight:700;margin-bottom:4px">⚠ '+missItems.length+' item(s) missing</div>' : '')+
+              (fb > 0 ? '<div style="background:rgba(243,156,18,.15);border:1px solid var(--wn);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--wn);font-weight:700">💰 ₹'+fb.toLocaleString('en-IN')+' balance due</div>' : '')+
+            '</div>'+
+          '</div>'+
+          missHtml+
+          '<div style="margin-top:10px;font-size:11px;color:var(--mu)">⏱ Returned: '+fd(r.returnDate)+' | '+r.actualDays+'d actual</div>'+
+          (fb > 0 ? '<button data-bn="'+r.returnBillNo+'" data-cust="'+r.customer+'" data-ph="'+r.phone+'" data-bal="'+fb+'" data-type="RETURN" onclick="bSettle(this)" style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Balance ₹'+fb.toLocaleString('en-IN')+'</button>' : '')+
+          '</div>';
+      }).join('');
+    }).catch(function(e){
+      grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ ' + e.message + '</div>';
+    });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXCEL DOWNLOAD — All 4 sheets
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _bxl = false;
+function bDlXL(){
+  toast('⟳ Preparing Excel…', 5000);
+  fetch(API+'?action=getExcel').then(function(r){ return r.json(); }).then(function(d){
+    if(!d||d.status!=='ok'){ toast('⚠ '+(d?d.message:'Error')); return; }
+    if(!_bxl){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=function(){ _bxl=true; _bMakeXL(d); };
+      document.head.appendChild(s);
+    } else { _bMakeXL(d); }
+  }).catch(function(e){ toast('⚠ '+e.message); });
+}
+
+function _bMakeXL(d){
+  var wb = XLSX.utils.book_new();
+  // Sales Info
+  var sh = ['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date'];
+  var sr = [sh].concat((d.sales||[]).map(function(s){
+    return [s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
+      s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sr), 'Sales_Info');
+  // Returns
+  var rh = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
+  var rr = [rh].concat((d.returns||[]).map(function(r){
+    return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rr), 'Returns');
+  // Inventory Main
+  var ih = ['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
+  var im = [ih].concat((d.invMain||[]).map(function(r,i){
+    return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(im), 'Inventory main');
+  // Inventory Sub
+  var is2 = [ih].concat((d.invSub||[]).map(function(r,i){
+    return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(is2), 'inventory sub');
+  XLSX.writeFile(wb, 'GCS_All_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
+  toast('✅ Excel downloaded — Sales, Returns, Inventory!');
+}
 </script>
