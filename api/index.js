@@ -15,7 +15,7 @@ async function sb(path, method='GET', body=null) {
       'apikey': SUPABASE_SECRET,
       'Authorization': `Bearer ${SUPABASE_SECRET}`,
       'Content-Type': 'application/json',
-      'Prefer': method==='POST' ? 'return=representation' : ''
+      'Prefer': method==='POST' ? 'return=representation' : (method==='DELETE' ? 'return=minimal' : '')
     }
   };
   if (body) opts.body = JSON.stringify(body);
@@ -166,54 +166,33 @@ async function getExcel(req,res) {
   return ok(res,{sales,returns,invMain,invSub});
 }
 
-// ── UPLOAD XL DATA (sync inventory from Excel) ────────────────
+// ── UPLOAD XL DATA — REPLACE mode (not add) ──────────────────
 async function uploadXL(data,res) {
   try {
     const {invMain, invSub} = data;
-    // Update main inventory
-    if (invMain && invMain.length) {
-      for (const row of invMain) {
+
+    // ── Helper: DELETE all rows then re-insert fresh ──────────
+    async function replaceTable(tbl, rows) {
+      if (!rows || !rows.length) return;
+      // Delete ALL existing rows in table
+      await sb(`${tbl}?id=gt.0`, 'DELETE');
+      // Insert fresh rows one by one
+      for (const row of rows) {
         if (!row.product) continue;
-        const existing = await sb(`inventory_main?product=eq.${encodeURIComponent(row.product)}&select=id`);
-        if (existing.length) {
-          await sb(`inventory_main?id=eq.${existing[0].id}`, 'PATCH', {
-            total_stock: Number(row.total_stock)||0,
-            in_qty:      Number(row.in_qty)||0,
-            out_qty:     Number(row.out_qty)||0
-          });
-        } else {
-          await sb('inventory_main','POST',{
-            product:     row.product,
-            total_stock: Number(row.total_stock)||0,
-            in_qty:      Number(row.in_qty)||0,
-            out_qty:     Number(row.out_qty)||0
-          });
-        }
+        await sb(tbl, 'POST', {
+          product:     String(row.product).trim(),
+          total_stock: Number(row.total_stock) || 0,
+          in_qty:      Number(row.in_qty)      || 0,
+          out_qty:     Number(row.out_qty)      || 0
+        });
       }
     }
-    // Update sub inventory
-    if (invSub && invSub.length) {
-      for (const row of invSub) {
-        if (!row.product) continue;
-        const existing = await sb(`inventory_sub?product=eq.${encodeURIComponent(row.product)}&select=id`);
-        if (existing.length) {
-          await sb(`inventory_sub?id=eq.${existing[0].id}`, 'PATCH', {
-            total_stock: Number(row.total_stock)||0,
-            in_qty:      Number(row.in_qty)||0,
-            out_qty:     Number(row.out_qty)||0
-          });
-        } else {
-          await sb('inventory_sub','POST',{
-            product:     row.product,
-            total_stock: Number(row.total_stock)||0,
-            in_qty:      Number(row.in_qty)||0,
-            out_qty:     Number(row.out_qty)||0
-          });
-        }
-      }
-    }
-    return ok(res,{message:'Inventory synced from Excel ✅'});
-  } catch(e) { return err(res,e.message); }
+
+    if (invMain && invMain.length) await replaceTable('inventory_main', invMain);
+    if (invSub  && invSub.length)  await replaceTable('inventory_sub',  invSub);
+
+    return ok(res, {message: 'Inventory replaced from Excel ✅'});
+  } catch(e) { return err(res, e.message); }
 }
 
 // ── SETTLE PAYMENT (clear pending balance) ────────────────────
