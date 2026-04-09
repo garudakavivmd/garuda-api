@@ -97,8 +97,8 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/main-products" target="_blank">🏗️ Main</a>
-    <a href="https://sites.google.com/view/garudakavi/sub-products" target="_blank">📦 Sub</a>
+    <a href="https://sites.google.com/view/gcskavi/main-products" target="_blank">🏗️ Main</a>
+    <a href="https://sites.google.com/view/gcskavi/sub-products" target="_blank">📦 Sub</a>
   </nav>
 </header>
 
@@ -501,29 +501,65 @@ function waRet(){
 
 // ── PENDING PANEL ─────────────────────────────────────────────
 function loadPending(){
-  el('pending-grid').innerHTML='<div class="loading">⟳ Loading from Google Sheet…</div>';
+  el('pending-grid').innerHTML='<div class="loading">⟳ Loading pending balances…</div>';
   el('pstats').style.display='none';
   fetch(API+'?action=getPending').then(function(r){return r.json();}).then(function(d){
     if(d.status!=='ok'){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+d.message+'</div>';return;}
-    if(!d.pending||!d.pending.length){el('pending-grid').innerHTML='<div class="empty">🎉 No pending balances! All cleared.</div>';return;}
-    var od=d.pending.filter(function(p){return p.overdue;}).length;
+    var all=d.pending||[], refunds=d.refunds||[];
+    if(!all.length&&!refunds.length){el('pending-grid').innerHTML='<div class="empty">🎉 No pending balances! All cleared.</div>';return;}
+    var od=all.filter(function(p){return p.overdue;}).length;
     el('pstats').style.display='grid';
-    el('st-cnt').textContent=d.pending.length;
+    el('st-cnt').textContent=all.length;
     el('st-od').textContent=od;
-    el('st-tot').textContent='₹'+Number(d.total).toLocaleString('en-IN');
-    el('st-ret').textContent='₹0';
-    el('pending-grid').innerHTML=d.pending.map(function(p){
-      return '<div class="pc'+(p.overdue?' overdue':'')+'" onclick="qs(\''+p.billNo+'\')">' +
-        (p.overdue?'<span class="od-tag">OVERDUE</span>':'')+
-        '<div class="pc-name" style="color:'+(p.overdue?'var(--er)':'var(--tx)')+'">👤 '+p.customer+'</div>' +
-        '<div class="pc-phone">📞 '+p.phone+'</div>' +
-        '<div class="pc-bill">🧾 '+p.billNo+'</div>' +
-        '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>' +
-        '<div class="pc-due '+(p.overdue?'od':'ok')+'">'+(p.overdue?'🔴 Overdue — Due: ':'📅 Due: ')+fd(p.inDate)+'</div>' +
-        '<div style="font-size:10px;color:var(--mu);margin-top:6px">Tap to view bill →</div></div>';
-    }).join('');
+    el('st-tot').textContent='₹'+Number(d.total||0).toLocaleString('en-IN');
+    el('st-ret').textContent=refunds.length>0?refunds.length+' refunds':'₹0';
+    var html='';
+    var disp=all.filter(function(p){return p.type==='DISPATCH'||!p.type;});
+    if(disp.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px">📤 DISPATCH PENDING ('+disp.length+')</div>';
+      html+=disp.map(function(p){
+        return '<div class="pc'+(p.overdue?' overdue':'')+'">'+
+          (p.overdue?'<span class="od-tag">OVERDUE</span>':'')+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill">🧾 '+p.billNo+'</div>'+
+          '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>'+
+          '<div class="pc-due '+(p.overdue?'od':'ok')+'">'+(p.overdue?'🔴 Overdue: ':'📅 Due: ')+fd(p.inDate)+'</div>'+
+          '<button data-bn="'+p.billNo+'" data-cust="'+p.customer+'" data-ph="'+p.phone+'" data-bal="'+p.balance+'" onclick="bSettle(this)" '+
+            'style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Now</button>'+
+          '</div>';
+      }).join('');
+    }
+    var retPend=all.filter(function(p){return p.type==='RETURN';});
+    if(retPend.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--teal);font-weight:700;margin-top:14px;margin-bottom:4px">📥 RETURN BALANCE DUE ('+retPend.length+')</div>';
+      html+=retPend.map(function(p){
+        return '<div class="pc overdue">'+
+          '<span class="od-tag" style="background:rgba(26,188,156,.2);border-color:var(--teal);color:var(--teal)">RETURN DUE</span>'+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill" style="color:var(--teal)">🧾 '+p.billNo+(p.refBill?'<br><span style="color:var(--mu);font-size:10px">Ref: '+p.refBill+'</span>':'')+'</div>'+
+          '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>'+
+          '<button data-bn="'+p.billNo+'" data-cust="'+p.customer+'" data-ph="'+p.phone+'" data-bal="'+p.balance+'" data-type="RETURN" onclick="bSettle(this)" '+
+            'style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Now</button>'+
+          '</div>';
+      }).join('');
+    }
+    if(refunds.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:#9b59b6;font-weight:700;margin-top:14px;margin-bottom:4px">🟡 REFUND DUE TO CUSTOMER ('+refunds.length+')</div>';
+      html+=refunds.map(function(p){
+        return '<div class="pc" style="border-color:rgba(155,89,182,.4)">'+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill" style="color:#9b59b6">🧾 '+p.billNo+'</div>'+
+          '<div class="pc-bal" style="color:#9b59b6">🟡 Refund ₹ '+Math.abs(Number(p.balance)).toLocaleString('en-IN')+'</div>'+
+          '</div>';
+      }).join('');
+    }
+    el('pending-grid').innerHTML=html;
   }).catch(function(e){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
 }
+
 
 function qs(bn){switchTab('search');el('search-input').value=bn;searchBills();}
 
@@ -592,3 +628,116 @@ function _bMakeXL(d){
 </script>
 </body>
 </html>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SETTLE PAYMENT — bill.html
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Settle modal HTML — inject once
+(function(){
+  var modal = document.createElement('div');
+  modal.id = 'settle-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML =
+    '<div style="background:#181818;border:1px solid var(--teal);border-radius:14px;padding:28px;width:100%;max-width:440px;font-family:Noto Sans,sans-serif">' +
+      '<div style="font-family:Rajdhani,sans-serif;font-size:18px;font-weight:700;color:var(--teal);margin-bottom:16px">💳 Settle Payment</div>' +
+      '<div id="sm-info" style="background:#001a12;border:1px solid #0a3a20;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px"></div>' +
+      '<div style="margin-bottom:12px">' +
+        '<label style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">Payment Amount (Rs)</label>' +
+        '<input id="sm-amt" type="number" min="0" placeholder="Enter amount" ' +
+          'style="margin-top:5px;width:100%;background:#202020;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:11px 13px;font-size:15px;outline:none;font-family:inherit">' +
+      '</div>' +
+      '<div style="margin-bottom:16px">' +
+        '<label style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">Notes (optional)</label>' +
+        '<input id="sm-notes" placeholder="Payment notes..." ' +
+          'style="margin-top:5px;width:100%;background:#202020;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;outline:none;font-family:inherit">' +
+      '</div>' +
+      '<div id="sm-result" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:7px;font-size:13px;font-weight:700;text-align:center"></div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button onclick="smClose()" style="flex:1;padding:11px;border-radius:8px;background:rgba(231,76,60,.15);border:1px solid var(--er);color:var(--er);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✖ Close</button>' +
+        '<button onclick="smSubmit()" style="flex:2;padding:11px;border-radius:8px;background:var(--teal);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✅ Confirm Settlement</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+})();
+
+var _smBillNo = null;
+var _smType   = null;
+
+function bSettle(btn) {
+  var billNo = btn.getAttribute('data-bn');
+  var cust   = btn.getAttribute('data-cust');
+  var phone  = btn.getAttribute('data-ph');
+  var bal    = Number(btn.getAttribute('data-bal')) || 0;
+  _smType    = btn.getAttribute('data-type') || 'DISPATCH';
+  _smBillNo  = billNo;
+
+  document.getElementById('sm-info').innerHTML =
+    '<div style="color:var(--teal);font-weight:700;font-size:14px;margin-bottom:6px">🧾 ' + billNo + '</div>' +
+    '👤 ' + cust + ' &nbsp; 📞 ' + phone + '<br>' +
+    '<span style="color:var(--er);font-weight:700;font-size:16px;margin-top:4px;display:block">🔴 Pending Balance: ₹' + bal.toLocaleString('en-IN') + '</span>';
+
+  document.getElementById('sm-amt').value = bal;
+  document.getElementById('sm-notes').value = '';
+  document.getElementById('sm-result').style.display = 'none';
+
+  var modal = document.getElementById('settle-modal');
+  modal.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('sm-amt').focus(); }, 100);
+}
+
+function smClose() {
+  document.getElementById('settle-modal').style.display = 'none';
+  _smBillNo = null;
+}
+
+function smSubmit() {
+  if (!_smBillNo) return;
+  var amt   = parseFloat(document.getElementById('sm-amt').value) || 0;
+  var notes = document.getElementById('sm-notes').value.trim();
+  if (amt <= 0) { alert('Enter payment amount'); return; }
+
+  var btn = document.querySelector('#settle-modal button:last-child');
+  btn.textContent = '⟳ Processing…';
+  btn.disabled = true;
+
+  fetch(API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'settlePayment', billNo: _smBillNo, payAmount: amt, notes: notes, type: _smType})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    btn.textContent = '✅ Confirm Settlement';
+    btn.disabled = false;
+    var res = document.getElementById('sm-result');
+    res.style.display = 'block';
+    if (d && d.status === 'ok') {
+      var paid = Number(d.newBalance) <= 0;
+      res.style.background = paid ? 'rgba(46,204,113,.15)' : 'rgba(243,156,18,.15)';
+      res.style.color      = paid ? 'var(--ok)' : 'var(--wn)';
+      res.textContent      = paid ? '✅ FULLY PAID! Payment cleared.' : '⚠ Partial — Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
+      setTimeout(function(){
+        smClose();
+        loadPending(); // refresh panel
+      }, 2000);
+    } else {
+      res.style.background = 'rgba(231,76,60,.15)';
+      res.style.color      = 'var(--er)';
+      res.textContent      = '⚠ Error: ' + (d ? d.message : 'Unknown error');
+    }
+  }).catch(function(e){
+    btn.textContent = '✅ Confirm Settlement';
+    btn.disabled = false;
+    var res = document.getElementById('sm-result');
+    res.style.display = 'block';
+    res.style.background = 'rgba(231,76,60,.15)';
+    res.style.color = 'var(--er)';
+    res.textContent = '⚠ Network error: ' + e.message;
+  });
+}
+
+// Close modal on outside click
+document.getElementById('settle-modal').addEventListener('click', function(e){
+  if (e.target === this) smClose();
+});
+</script>
