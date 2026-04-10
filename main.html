@@ -89,7 +89,7 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">📋 Bills & Pendings </a>
+    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">📋 Bills</a>
   </nav>
 </header>
 
@@ -334,7 +334,7 @@ function ping(){
 
 // ── LIVE STOCK ─────────────────────────────────────────────────
 function loadStock(){
-  el('stock-grid').innerHTML='<div style="color:var(--mu);font-size:12px;padding:10px">⟳ Loading…</div>';
+  el('stock-grid').innerHTML='<div style="color:var(--mu);font-size:12px;padding:10px">⟳ Loading live stock…</div>';
   Promise.all([
     fetch(API+'?action=getStock&sheet=MAIN').then(function(r){return r.json();}),
     fetch(API+'?action=getStock&sheet=SUB').then(function(r){return r.json();})
@@ -342,22 +342,39 @@ function loadStock(){
     var mainStock=results[0].status==='ok'?results[0].stock:[];
     var subStock =results[1].status==='ok'?results[1].stock:[];
     var allStock=mainStock.concat(subStock);
+    // Update ALL_PRODUCTS stock with live data — fuzzy match
     allStock.forEach(function(s){
-      var p=ALL_PRODUCTS.find(function(x){return x.name.toLowerCase()===s.name.toLowerCase();});
-      if(p) p.stock=s.available;
+      var sName=s.name.trim().toLowerCase();
+      var p=ALL_PRODUCTS.find(function(x){
+        var xName=x.name.trim().toLowerCase();
+        return xName===sName || xName.indexOf(sName)!==-1 || sName.indexOf(xName)!==-1;
+      });
+      if(p){
+        p.stock=Number(s.available)||0;
+        p.out=Number(s.out)||0;
+        p.total=Number(s.total)||0;
+      }
     });
-    buildD(); // refresh dispatch table with live stock
+    buildD(); // rebuild dispatch table with fresh stock
+    buildR(); // rebuild return table too
+    if(!allStock.length){
+      el('stock-grid').innerHTML='<div style="color:var(--wn);font-size:12px;padding:10px">⚠ No stock data received. Check API.</div>';
+      return;
+    }
     el('stock-grid').innerHTML=allStock.map(function(s){
       var pct=s.total>0?s.available/s.total:1;
       var cls=pct>0.5?'':pct>0.2?'mid':'low';
-      return '<div class="sc"><div class="sc-name">'+s.name+'</div>'+
+      var outPct=s.total>0?s.out/s.total:0;
+      return '<div class="sc">'+
+        '<div class="sc-name">'+s.name+'</div>'+
         '<div class="sc-avail '+cls+'">'+s.available+' <span style="font-size:12px;font-weight:400">pcs</span></div>'+
-        '<div class="sc-meta">Total: '+s.total+'</div>'+
-        (s.out>0?'<div class="sc-out">⬆ Out: '+s.out+'</div>':'')+'</div>';
+        '<div class="sc-meta">Total: '+s.total+' pcs</div>'+
+        (s.out>0?'<div class="sc-out">⬆ Out: '+s.out+' pcs</div>':'')+
+        '</div>';
     }).join('');
     el('stock-upd').textContent=new Date().toLocaleTimeString('en-IN');
   }).catch(function(e){
-    el('stock-grid').innerHTML='<div style="color:var(--er);font-size:12px;padding:10px">⚠ '+e.message+'</div>';
+    el('stock-grid').innerHTML='<div style="color:var(--er);font-size:12px;padding:10px">⚠ Network error: '+e.message+'</div>';
   });
 }
 
@@ -774,19 +791,31 @@ function dlXL(){
     if(!d||d.status!=='ok'){toast('⚠ '+(d?d.message:'Error'));return;}
     _xl(function(){
       var wb=XLSX.utils.book_new();
-      // Sales Info
-      var sh=['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date'];
+      // Sales Info with products
+      var sh=['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date','Products (Name x Qty @ Rate)'];
       var sales=[sh].concat((d.sales||[]).map(function(s){
+        var itStr=(s.sale_items||[]).map(function(i){return i.product+'x'+i.qty+'pcs@Rs'+i.price+'/day=Rs'+(i.amount||0);}).join(' | ');
         return [s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
-          s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''];
+          s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):'',itStr];
       }));
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sales),'Sales_Info');
-      // Returns
-      var rh=['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
+      // Sale Items detail sheet
+      var sih=['Bill No','Customer','OUT Date','Product','Qty','Rate per day','Amount'];
+      var sitems=[sih];
+      (d.sales||[]).forEach(function(s){(s.sale_items||[]).forEach(function(i){sitems.push([s.bill_no,s.customer,s.out_date,i.product,i.qty,i.price,i.amount||0]);});});
+      if(sitems.length>1) XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sitems),'Sale Items');
+      // Returns with items + missing
+      var rh=['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes','Items Returned','Missing Items'];
       var rets=[rh].concat((d.returns||[]).map(function(r){
-        return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''];
+        var rStr=(r.return_items||[]).map(function(i){return i.product+'x'+i.qty;}).join(' | ');
+        return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||'',rStr,r.missing_summary||''];
       }));
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rets),'Returns');
+      // Return Items detail sheet
+      var rih=['Return Bill','Customer','Return Date','Product','Returned Qty'];
+      var ritems=[rih];
+      (d.returns||[]).forEach(function(r){(r.return_items||[]).forEach(function(i){ritems.push([r.return_bill_no,r.customer,r.return_date,i.product,i.qty]);});});
+      if(ritems.length>1) XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ritems),'Return Items');
       // Inventory Main
       var ih=['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
       var im=[ih].concat((d.invMain||[]).map(function(r,i){
@@ -799,7 +828,7 @@ function dlXL(){
       }));
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(is2),'inventory sub');
       XLSX.writeFile(wb,'GCS_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
-      toast('✅ Excel downloaded — 4 sheets!');
+      toast('✅ Excel downloaded — 6 sheets with full product details!');
     });
   }).catch(function(e){toast('⚠ '+e.message);});
 }
