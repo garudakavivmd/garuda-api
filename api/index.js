@@ -261,19 +261,13 @@ async function getExcel(req,res) {
 async function restoreMissing(data, res) {
   try {
     const { returnBillNo, items, notes } = data;
-    // Update inventory IN for each restored item
+    // Update inventory IN for each restored item using robust helper
     for (const item of (items||[])) {
-      const inv = item.group === 'SUB' ? 'inventory_sub' : 'inventory_main';
-      const rows = await sb(`${inv}?product=eq.${encodeURIComponent(item.name)}&select=id,in_qty`);
-      if (rows.length) {
-        await sb(`${inv}?id=eq.${rows[0].id}`, 'PATCH', {
-          in_qty: (Number(rows[0].in_qty)||0) + Number(item.qty)
-        });
-      }
+      await updateInv(item.name, item.group||'MAIN', 'in_qty', Number(item.qty)||0);
     }
     // Update the return record notes
     if (returnBillNo) {
-      const ret = await sb(`returns?return_bill_no=eq.${encodeURIComponent(returnBillNo)}&select=id,notes`);
+      const ret = await sb(`returns?return_bill_no=ilike.${encodeURIComponent(returnBillNo)}&select=id,notes`);
       if (ret.length) {
         const addNote = `[Restored: ${(items||[]).map(i=>i.name+'×'+i.qty).join(', ')}${notes?' — '+notes:''}]`;
         await sb(`returns?id=eq.${ret[0].id}`, 'PATCH', {
@@ -367,6 +361,30 @@ async function settlePayment(data,res) {
   } catch(e) { return err(res,e.message); }
 }
 
+// ── INVENTORY HELPER — finds product in correct table and updates ─
+async function updateInv(productName, group, field, delta) {
+  // Try the expected table first, then fallback
+  const tables = group==='SUB'
+    ? ['inventory_sub','inventory_main']
+    : ['inventory_main','inventory_sub'];
+
+  for (const tbl of tables) {
+    // Use ilike for case-insensitive match
+    const rows = await sb(`${tbl}?product=ilike.${encodeURIComponent(productName)}&select=id,${field}&limit=1`);
+    if (rows && rows.length) {
+      const newVal = Math.max(0, (Number(rows[0][field])||0) + delta);
+      await sb(`${tbl}?id=eq.${rows[0].id}`, 'PATCH', {[field]: newVal});
+      return true; // success
+    }
+  }
+  // If not found in either table, create in expected table
+  const createTbl = group==='SUB' ? 'inventory_sub' : 'inventory_main';
+  const newRow = {product: productName, total_stock: 0, in_qty: 0, out_qty: 0};
+  newRow[field] = Math.max(0, delta);
+  await sb(createTbl, 'POST', newRow);
+  return false;
+}
+
 // ── ADD ORDER ─────────────────────────────────────────────────
 async function addOrder(data,res) {
   const items = data.items||[];
@@ -387,20 +405,9 @@ async function addOrder(data,res) {
       group_type:it.group||'MAIN'
     });
   }
-  // Update inventory for each item based on its group (MAIN or SUB)
+  // Update inventory for each item — uses helper that tries both tables
   for (const it of items) {
-    const inv = (it.group==='SUB') ? 'inventory_sub' : 'inventory_main';
-    const rows = await sb(`${inv}?product=eq.${encodeURIComponent(it.name)}&select=id,out_qty`);
-    if (rows.length) {
-      await sb(`${inv}?id=eq.${rows[0].id}`,'PATCH',{out_qty:(Number(rows[0].out_qty)||0)+Number(it.qty)});
-    } else {
-      // Try other table as fallback if not found
-      const inv2 = inv==='inventory_sub' ? 'inventory_main' : 'inventory_sub';
-      const rows2 = await sb(`${inv2}?product=eq.${encodeURIComponent(it.name)}&select=id,out_qty`);
-      if (rows2.length) {
-        await sb(`${inv2}?id=eq.${rows2[0].id}`,'PATCH',{out_qty:(Number(rows2[0].out_qty)||0)+Number(it.qty)});
-      }
-    }
+    await updateInv(it.name, it.group||'MAIN', 'out_qty', Number(it.qty)||0);
   }
   await telegram(
     `✅ *New Order — ${data.billNo}*\n📅 ${new Date().toLocaleDateString('en-IN')}\n━━━━━━━━━━━━━━━━\n`+
@@ -428,19 +435,9 @@ async function addReturn(data,res) {
   for (const it of items) {
     await sb('return_items','POST',{return_bill_no:data.returnBillNo,product:it.name,qty:Number(it.qty)||0,group_type:it.group||'MAIN'});
   }
-  // Update inventory for each returned item based on its group
+  // Update inventory for each returned item — uses helper that tries both tables
   for (const it of items) {
-    const inv = (it.group==='SUB') ? 'inventory_sub' : 'inventory_main';
-    const rows = await sb(`${inv}?product=eq.${encodeURIComponent(it.name)}&select=id,in_qty`);
-    if (rows.length) {
-      await sb(`${inv}?id=eq.${rows[0].id}`,'PATCH',{in_qty:(Number(rows[0].in_qty)||0)+Number(it.qty)});
-    } else {
-      const inv2 = inv==='inventory_sub' ? 'inventory_main' : 'inventory_sub';
-      const rows2 = await sb(`${inv2}?product=eq.${encodeURIComponent(it.name)}&select=id,in_qty`);
-      if (rows2.length) {
-        await sb(`${inv2}?id=eq.${rows2[0].id}`,'PATCH',{in_qty:(Number(rows2[0].in_qty)||0)+Number(it.qty)});
-      }
-    }
+    await updateInv(it.name, it.group||'MAIN', 'in_qty', Number(it.qty)||0);
   }
   const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(data.originalBillNo)}&select=id,balance`);
   if (sale.length) {
