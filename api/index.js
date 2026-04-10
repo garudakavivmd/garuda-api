@@ -133,22 +133,23 @@ async function getReturns(req,res) {
 
   // For each return, look up original dispatch to compute missing items
   const returns = await Promise.all(rows.map(async r => {
-    const retItems = (r.return_items||[]).map(i=>({name:i.product, qty:Number(i.qty)||0}));
+    const retItems = (r.return_items||[]).map(i=>({name:i.product, qty:Number(i.qty)||0, group:i.group_type||'MAIN'}));
     // Get original dispatch items to compute missing
     let missing = [];
     try {
-      const origSales = await sb(`sales?bill_no=eq.${encodeURIComponent(r.original_bill_no)}&select=sale_items(*)`);
+      const origSales = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
       if (origSales.length && origSales[0].sale_items) {
         origSales[0].sale_items.forEach(si => {
           const ret = retItems.find(ri => ri.name.toLowerCase()===si.product.toLowerCase());
           const retQty = ret ? ret.qty : 0;
           const missQty = Math.max(0, (Number(si.qty)||0) - retQty);
           missing.push({
-            name: si.product,
+            name:       si.product,
             dispatched: Number(si.qty)||0,
-            returned: retQty,
-            missing: missQty,
-            price: Number(si.price)||0
+            returned:   retQty,
+            missing:    missQty,
+            price:      Number(si.price)||0,
+            group:      si.group_type || 'MAIN'
           });
         });
       }
@@ -236,7 +237,7 @@ async function getExcel(req,res) {
     const retItems = (r.return_items||[]);
     let missing = [];
     try {
-      const orig = await sb(`sales?bill_no=eq.${encodeURIComponent(r.original_bill_no)}&select=sale_items(*)`);
+      const orig = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
       if (orig.length && orig[0].sale_items) {
         orig[0].sale_items.forEach(si => {
           const ret = retItems.find(ri => ri.product.toLowerCase()===si.product.toLowerCase());
@@ -382,14 +383,23 @@ async function addOrder(data,res) {
     await sb('sale_items','POST',{
       bill_no:data.billNo, product:it.name,
       qty:Number(it.qty)||0, price:Number(it.price)||0,
-      rent_type:it.type||'per day', amount:Number(it.amount)||0
+      rent_type:it.type||'per day', amount:Number(it.amount)||0,
+      group_type:it.group||'MAIN'
     });
   }
-  const inv = data.sheetType==='SUB'?'inventory_sub':'inventory_main';
+  // Update inventory for each item based on its group (MAIN or SUB)
   for (const it of items) {
+    const inv = (it.group==='SUB') ? 'inventory_sub' : 'inventory_main';
     const rows = await sb(`${inv}?product=eq.${encodeURIComponent(it.name)}&select=id,out_qty`);
     if (rows.length) {
       await sb(`${inv}?id=eq.${rows[0].id}`,'PATCH',{out_qty:(Number(rows[0].out_qty)||0)+Number(it.qty)});
+    } else {
+      // Try other table as fallback if not found
+      const inv2 = inv==='inventory_sub' ? 'inventory_main' : 'inventory_sub';
+      const rows2 = await sb(`${inv2}?product=eq.${encodeURIComponent(it.name)}&select=id,out_qty`);
+      if (rows2.length) {
+        await sb(`${inv2}?id=eq.${rows2[0].id}`,'PATCH',{out_qty:(Number(rows2[0].out_qty)||0)+Number(it.qty)});
+      }
     }
   }
   await telegram(
@@ -416,13 +426,20 @@ async function addReturn(data,res) {
     status:fb<=0?'FULLY PAID':'BALANCE DUE', notes:data.notes||''
   });
   for (const it of items) {
-    await sb('return_items','POST',{return_bill_no:data.returnBillNo,product:it.name,qty:Number(it.qty)||0});
+    await sb('return_items','POST',{return_bill_no:data.returnBillNo,product:it.name,qty:Number(it.qty)||0,group_type:it.group||'MAIN'});
   }
-  const inv = data.sheetType==='SUB'?'inventory_sub':'inventory_main';
+  // Update inventory for each returned item based on its group
   for (const it of items) {
+    const inv = (it.group==='SUB') ? 'inventory_sub' : 'inventory_main';
     const rows = await sb(`${inv}?product=eq.${encodeURIComponent(it.name)}&select=id,in_qty`);
     if (rows.length) {
       await sb(`${inv}?id=eq.${rows[0].id}`,'PATCH',{in_qty:(Number(rows[0].in_qty)||0)+Number(it.qty)});
+    } else {
+      const inv2 = inv==='inventory_sub' ? 'inventory_main' : 'inventory_sub';
+      const rows2 = await sb(`${inv2}?product=eq.${encodeURIComponent(it.name)}&select=id,in_qty`);
+      if (rows2.length) {
+        await sb(`${inv2}?id=eq.${rows2[0].id}`,'PATCH',{in_qty:(Number(rows2[0].in_qty)||0)+Number(it.qty)});
+      }
     }
   }
   const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(data.originalBillNo)}&select=id,balance`);
