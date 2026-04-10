@@ -97,7 +97,7 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">🏗️ GCS Inventory</a>
+    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">GCS Inventory</a>
     
   </nav>
 </header>
@@ -126,12 +126,7 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
           <input id="search-input" placeholder="Bill No / Name / Mobile" oninput="onAC(this.value,'d')" onkeydown="if(event.key==='Enter')searchBills()" autocomplete="off">
           <div class="ac-list" id="ac-d"></div>
         </div>
-        <select id="search-type">
-          <option value="all">All Types</option>
-          <option value="MAIN">Main Inventory</option>
-          <option value="SUB">Sub Inventory</option>
-        </select>
-        <button class="btn bg" onclick="searchBills()">🔍 Search</button>
+<button class="btn bg" onclick="searchBills()">🔍 Search</button>
         <button class="btn bo" onclick="clearSearch()">✕ Clear</button>
       </div>
     </div>
@@ -277,7 +272,7 @@ document.addEventListener('click',function(e){
 
 // ── SEARCH DISPATCH ───────────────────────────────────────────
 function searchBills(){
-  var q=el('search-input').value.trim(), typ=el('search-type').value;
+  var q=el('search-input').value.trim();
   if(!q){toast('⚠ Enter bill no / name / mobile');return;}
   el('ac-d').style.display='none';
   el('results-box').style.display='block';
@@ -287,7 +282,7 @@ function searchBills(){
     .then(function(r){return r.json();})
     .then(function(d){
       if(d.status!=='ok'){el('results-list').innerHTML='<div class="empty">⚠ '+d.message+'</div>';return;}
-      var b=(d.bills||[]).filter(function(x){return typ==='all'||x.sheetType===typ;});
+      var b=(d.bills||[]);
       el('results-count').textContent='('+b.length+' found)';
       el('results-list').innerHTML=b.length?b.map(rBC).join(''):'<div class="empty">No bills found for "'+q+'"</div>';
     }).catch(function(e){el('results-list').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
@@ -761,10 +756,12 @@ document.getElementById('settle-modal').addEventListener('click', function(e){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MISSING MATERIALS TAB
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Cache returns for missing tab
+var _missCache = [];
+
 function loadMissing(){
   var grid = document.getElementById('missing-grid');
   grid.innerHTML = '<div class="loading">⟳ Loading return data…</div>';
-
   fetch(API+'?action=getReturns&q=')
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -772,53 +769,108 @@ function loadMissing(){
         grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ ' + (d?d.message:'Error') + '</div>';
         return;
       }
+      // Only show returns that have missing items OR pending balance
+      _missCache = d.returns || [];
+
+      // Show all returns that have any issue:
+      // 1. Has missing items from computation
+      // 2. Has pending balance
+      // 3. Status is BALANCE DUE
       var rets = (d.returns||[]).filter(function(r){
-        return (r.items||[]).some(function(i){ return Number(i.missing||0) > 0; }) ||
-               (r.finalBalance > 0);
+        var hasMiss  = r.missingItems && r.missingItems.length > 0;
+        var hasBal   = Number(r.finalBalance) > 0;
+        var isBDue   = r.status === 'BALANCE DUE';
+        return hasMiss || hasBal || isBDue;
       });
 
       if(!rets.length){
-        grid.innerHTML = '<div class="empty">🎉 No missing materials! All items fully returned.</div>';
+        grid.innerHTML = '<div class="empty">🎉 No missing materials or pending balances! All returns fully settled.</div>';
         return;
       }
 
-      grid.innerHTML = rets.map(function(r){
-        var missItems = (r.items||[]).filter(function(i){ return Number(i.missing||0) > 0; });
+      grid.innerHTML = rets.map(function(r, ri){
+        var missItems = r.missingItems || [];
         var fb = Number(r.finalBalance);
-        var missHtml = missItems.length
-          ? '<div style="margin-top:10px"><div style="font-size:11px;color:var(--mu);text-transform:uppercase;margin-bottom:6px">Missing Items:</div>'+
-            '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-            '<tr style="background:#1a1200"><th style="padding:6px 10px;text-align:left;color:var(--wn)">Product</th><th style="padding:6px;text-align:center;color:var(--wn)">Dispatched</th><th style="padding:6px;text-align:center;color:var(--wn)">Returned</th><th style="padding:6px;text-align:center;color:var(--er)">Missing</th></tr>'+
-            missItems.map(function(i){
-              var ret = Number(i.qty||0);
-              var miss = Number(i.missing||0);
-              var disp = ret + miss;
-              return '<tr style="border-bottom:1px solid #2a1a00"><td style="padding:6px 10px">'+i.name+'</td>'+
-                '<td style="padding:6px;text-align:center;color:var(--mu)">'+disp+'</td>'+
-                '<td style="padding:6px;text-align:center;color:var(--ok)">'+ret+'</td>'+
-                '<td style="padding:6px;text-align:center;color:var(--er);font-weight:700">⚠ '+miss+'</td></tr>';
-            }).join('')+'</table></div>'
-          : '';
 
-        return '<div class="pc" style="border-color:rgba(243,156,18,.4);margin-bottom:12px">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px">'+
-            '<div><div class="pc-name">👤 '+r.customer+'</div>'+
-            '<div class="pc-phone">📞 '+r.phone+'</div>'+
-            '<div class="pc-bill" style="color:var(--teal)">🧾 '+r.returnBillNo+'</div>'+
-            '<div style="font-size:11px;color:var(--mu)">Ref: '+r.originalBillNo+'</div></div>'+
-            '<div style="text-align:right">'+
-              (missItems.length ? '<div style="background:rgba(231,76,60,.15);border:1px solid var(--er);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--er);font-weight:700;margin-bottom:4px">⚠ '+missItems.length+' item(s) missing</div>' : '')+
-              (fb > 0 ? '<div style="background:rgba(243,156,18,.15);border:1px solid var(--wn);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--wn);font-weight:700">💰 ₹'+fb.toLocaleString('en-IN')+' balance due</div>' : '')+
+        // Missing items table
+        var missHtml = '';
+        if(missItems.length){
+          missHtml = '<div style="margin-top:12px">'+
+            '<div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⚠ Missing Items:</div>'+
+            '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+            '<tr style="background:#1a1200"><th style="padding:7px 10px;text-align:left;color:var(--wn)">Product</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--mu)">Dispatched</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--ok)">Returned</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--er)">Missing</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--teal)">Restore Qty</th></tr>'+
+            missItems.map(function(i, ii){
+              return '<tr style="border-bottom:1px solid #2a1a00">'+
+                '<td style="padding:7px 10px">'+i.name+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--mu)">'+i.dispatched+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--ok)">'+i.returned+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--er);font-weight:700">⚠ '+i.missing+'</td>'+
+                '<td style="padding:7px;text-align:center">'+
+                  '<input type="number" min="0" max="'+i.missing+'" value="'+i.missing+'" id="rest-'+ri+'-'+ii+'" '+
+                  'style="width:65px;text-align:center;background:#1a1200;border:1px solid #3a2800;border-radius:4px;color:var(--tx);padding:4px;font-family:inherit;font-size:12px">'+
+                '</td></tr>';
+            }).join('')+
+            '</table>'+
+            '<button onclick="doRestore('+ri+')" style="margin-top:10px;padding:8px 18px;background:var(--ok);color:#000;border:none;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">✅ Restore to Inventory</button>'+
+            '<input placeholder="Notes (optional)" id="rest-notes-'+ri+'" style="margin-top:8px;width:100%;background:#1a1200;border:1px solid #2a1a00;border-radius:6px;color:var(--tx);padding:8px 12px;font-size:12px;font-family:inherit;outline:none">'+
+            '</div>';
+        }
+
+        return '<div class="pc" style="border-color:rgba(243,156,18,.4);margin-bottom:16px" id="miss-card-'+ri+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'+
+            '<div>'+
+              '<div class="pc-name">👤 '+r.customer+'</div>'+
+              '<div class="pc-phone">📞 '+r.phone+'</div>'+
+              '<div class="pc-bill" style="color:var(--teal)">🧾 '+r.returnBillNo+'</div>'+
+              '<div style="font-size:11px;color:var(--mu)">Ref: '+r.originalBillNo+'</div>'+
+            '</div>'+
+            '<div style="text-align:right;display:flex;flex-direction:column;gap:5px">'+
+              (missItems.length ? '<span style="background:rgba(231,76,60,.15);border:1px solid var(--er);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--er);font-weight:700">⚠ '+missItems.length+' item(s) missing</span>' : '')+
+              (fb > 0 ? '<span style="background:rgba(243,156,18,.15);border:1px solid var(--wn);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--wn);font-weight:700">💰 ₹'+fb.toLocaleString('en-IN')+' due</span>' : '')+
             '</div>'+
           '</div>'+
+          '<div style="margin-top:8px;font-size:11px;color:var(--mu)">⏱ Returned: '+fd(r.returnDate)+' | Actual: '+r.actualDays+'d / '+r.actualMonths+'mo</div>'+
           missHtml+
-          '<div style="margin-top:10px;font-size:11px;color:var(--mu)">⏱ Returned: '+fd(r.returnDate)+' | '+r.actualDays+'d actual</div>'+
-          (fb > 0 ? '<button data-bn="'+r.returnBillNo+'" data-cust="'+r.customer+'" data-ph="'+r.phone+'" data-bal="'+fb+'" data-type="RETURN" onclick="bSettle(this)" style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Balance ₹'+fb.toLocaleString('en-IN')+'</button>' : '')+
+          (fb > 0
+            ? '<button data-bn="'+r.returnBillNo+'" data-cust="'+r.customer+'" data-ph="'+r.phone+'" data-bal="'+fb+'" data-type="RETURN" onclick="bSettle(this)" '+
+              'style="margin-top:10px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:8px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">'+
+              '💳 Settle Balance ₹'+fb.toLocaleString('en-IN')+'</button>'
+            : '')+
           '</div>';
       }).join('');
     }).catch(function(e){
-      grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ ' + e.message + '</div>';
+      grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ Network error: ' + e.message + '</div>';
     });
+}
+
+function doRestore(ri){
+  var r = _missCache.filter(function(x){ return (x.missingItems||[]).length > 0 || Number(x.finalBalance) > 0; })[ri];
+  if(!r) return;
+  var missItems = r.missingItems || [];
+  var items = [];
+  missItems.forEach(function(m, ii){
+    var inp = document.getElementById('rest-'+ri+'-'+ii);
+    var qty = parseInt(inp ? inp.value : 0) || 0;
+    if(qty > 0){
+      items.push({name: m.name, qty: qty, group: m.group||'MAIN'});
+    }
+  });
+  if(!items.length){ toast('⚠ Enter restore qty for at least one item'); return; }
+  var notes = (document.getElementById('rest-notes-'+ri)||{}).value||'';
+  fetch(API, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'restoreMissing', returnBillNo: r.returnBillNo, items: items, notes: notes})
+  }).then(function(res){ return res.json(); }).then(function(d){
+    if(d && d.status==='ok'){
+      toast('✅ Items restored to inventory!');
+      var card = document.getElementById('miss-card-'+ri);
+      if(card) card.style.opacity='0.5';
+      setTimeout(loadMissing, 1500);
+    } else { toast('⚠ '+(d?d.message:'Error')); }
+  }).catch(function(e){ toast('⚠ '+e.message); });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -840,31 +892,60 @@ function bDlXL(){
 
 function _bMakeXL(d){
   var wb = XLSX.utils.book_new();
-  // Sales Info
-  var sh = ['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date'];
-  var sr = [sh].concat((d.sales||[]).map(function(s){
-    return [s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
-      s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''];
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sr), 'Sales_Info');
-  // Returns
-  var rh = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
-  var rr = [rh].concat((d.returns||[]).map(function(r){
-    return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''];
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rr), 'Returns');
-  // Inventory Main
+
+  // SALES INFO — with product details
+  var sh = ['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date','Products (Name×Qty×Rate×Amount)'];
+  var salesRows = [];
+  (d.sales||[]).forEach(function(s){
+    var itemStr = (s.sale_items||[]).map(function(i){ return i.product+'×'+i.qty+'pcs@₹'+i.price+'/day=₹'+(i.amount||0); }).join(' | ');
+    salesRows.push([s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
+      s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):'', itemStr]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([sh].concat(salesRows)), 'Sales_Info');
+
+  // SALE ITEMS DETAIL — separate sheet
+  var sih = ['Bill No','Customer','Phone','OUT Date','Product','Qty','Rate/day','Amount'];
+  var sItemRows = [];
+  (d.sales||[]).forEach(function(s){
+    (s.sale_items||[]).forEach(function(i){
+      sItemRows.push([s.bill_no,s.customer,s.phone,s.out_date,i.product,i.qty,i.price,i.amount||0]);
+    });
+  });
+  if(sItemRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([sih].concat(sItemRows)), 'Sale Items');
+
+  // RETURNS — with product details + missing
+  var rh = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes','Items Returned','Missing Items'];
+  var retRows = [];
+  (d.returns||[]).forEach(function(r){
+    var retStr = (r.return_items||[]).map(function(i){ return i.product+'×'+i.qty; }).join(' | ');
+    retRows.push([r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||'',retStr,r.missing_summary||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([rh].concat(retRows)), 'Returns');
+
+  // RETURN ITEMS DETAIL — separate sheet
+  var rih = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Product','Returned Qty'];
+  var rItemRows = [];
+  (d.returns||[]).forEach(function(r){
+    (r.return_items||[]).forEach(function(i){
+      rItemRows.push([r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,i.product,i.qty]);
+    });
+  });
+  if(rItemRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([rih].concat(rItemRows)), 'Return Items');
+
+  // INVENTORY MAIN
   var ih = ['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
   var im = [ih].concat((d.invMain||[]).map(function(r,i){
     return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(im), 'Inventory main');
-  // Inventory Sub
+
+  // INVENTORY SUB
   var is2 = [ih].concat((d.invSub||[]).map(function(r,i){
     return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(is2), 'inventory sub');
-  XLSX.writeFile(wb, 'GCS_All_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
-  toast('✅ Excel downloaded — Sales, Returns, Inventory!');
+
+  XLSX.writeFile(wb, 'GCS_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
+  toast('✅ Excel downloaded — 6 sheets with full product details!');
 }
 </script>
