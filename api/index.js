@@ -64,6 +64,7 @@ export default async function handler(req, res) {
       if (data.action==='addReturn')      return await addReturn(data,res);
       if (data.action==='settlePayment')  return await settlePayment(data,res);
       if (data.action==='uploadXL')       return await uploadXL(data,res);
+      if (data.action==='restoreMissing')  return await restoreMissing(data,res);
       return err(res,'Unknown action: '+data.action);
     }
     return err(res,'Method not allowed');
@@ -129,14 +130,41 @@ async function getReturns(req,res) {
   let filter = 'select=*,return_items(*)&order=id.desc';
   if (q) filter += `&or=(return_bill_no.ilike.*${q}*,original_bill_no.ilike.*${q}*,customer.ilike.*${q}*,phone.ilike.*${q}*)`;
   const rows = await sb(`returns?${filter}`);
-  const returns = rows.map(r=>({
-    returnBillNo:r.return_bill_no, originalBillNo:r.original_bill_no,
-    customer:r.customer, phone:r.phone, returnDate:r.return_date,
-    actualDays:r.actual_days, actualMonths:r.actual_months,
-    totalRental:r.total_rental, prevAdvance:r.prev_advance,
-    additionalPay:r.additional_pay, finalBalance:r.final_balance,
-    status:r.status, notes:r.notes,
-    items:(r.return_items||[]).map(i=>({name:i.product,qty:i.qty}))
+
+  // For each return, look up original dispatch to compute missing items
+  const returns = await Promise.all(rows.map(async r => {
+    const retItems = (r.return_items||[]).map(i=>({name:i.product, qty:Number(i.qty)||0}));
+    // Get original dispatch items to compute missing
+    let missing = [];
+    try {
+      const origSales = await sb(`sales?bill_no=eq.${encodeURIComponent(r.original_bill_no)}&select=sale_items(*)`);
+      if (origSales.length && origSales[0].sale_items) {
+        origSales[0].sale_items.forEach(si => {
+          const ret = retItems.find(ri => ri.name.toLowerCase()===si.product.toLowerCase());
+          const retQty = ret ? ret.qty : 0;
+          const missQty = Math.max(0, (Number(si.qty)||0) - retQty);
+          missing.push({
+            name: si.product,
+            dispatched: Number(si.qty)||0,
+            returned: retQty,
+            missing: missQty,
+            price: Number(si.price)||0
+          });
+        });
+      }
+    } catch(e) { /* ignore */ }
+
+    return {
+      returnBillNo:r.return_bill_no, originalBillNo:r.original_bill_no,
+      customer:r.customer, phone:r.phone, returnDate:r.return_date,
+      actualDays:r.actual_days, actualMonths:r.actual_months,
+      totalRental:r.total_rental, prevAdvance:r.prev_advance,
+      additionalPay:r.additional_pay, finalBalance:r.final_balance,
+      status:r.status, notes:r.notes,
+      items: retItems,
+      missingItems: missing.filter(m => m.missing > 0),
+      allItems: missing
+    };
   }));
   return ok(res,{returns,count:returns.length});
 }
@@ -191,13 +219,75 @@ async function getPending(req,res) {
 
 // ── GET EXCEL DATA ────────────────────────────────────────────
 async function getExcel(req,res) {
-  const [sales,returns,invMain,invSub] = await Promise.all([
+  const [salesRaw,returnsRaw,invMain,invSub] = await Promise.all([
     sb('sales?select=*,sale_items(*)&order=id.desc'),
     sb('returns?select=*,return_items(*)&order=id.desc'),
     sb('inventory_main?select=*&order=id'),
     sb('inventory_sub?select=*&order=id')
   ]);
+  // Include items in sales
+  const sales = salesRaw.map(s => ({
+    ...s,
+    items_summary: (s.sale_items||[]).map(i=>`${i.product}×${i.qty}`).join(', '),
+    sale_items: s.sale_items
+  }));
+  // Include items in returns + compute missing
+  const returns = await Promise.all(returnsRaw.map(async r => {
+    const retItems = (r.return_items||[]);
+    let missing = [];
+    try {
+      const orig = await sb(`sales?bill_no=eq.${encodeURIComponent(r.original_bill_no)}&select=sale_items(*)`);
+      if (orig.length && orig[0].sale_items) {
+        orig[0].sale_items.forEach(si => {
+          const ret = retItems.find(ri => ri.product.toLowerCase()===si.product.toLowerCase());
+          const retQty = ret ? Number(ret.qty)||0 : 0;
+          const missQty = Math.max(0, (Number(si.qty)||0) - retQty);
+          if (missQty > 0) missing.push(`${si.product}×${missQty}`);
+        });
+      }
+    } catch(e) {}
+    return {
+      ...r,
+      items_summary: retItems.map(i=>`${i.product}×${i.qty}`).join(', '),
+      missing_summary: missing.join(', '),
+      return_items: retItems
+    };
+  }));
   return ok(res,{sales,returns,invMain,invSub});
+}
+
+// ── RESTORE MISSING ITEMS (customer returns missing materials) ──
+async function restoreMissing(data, res) {
+  try {
+    const { returnBillNo, items, notes } = data;
+    // Update inventory IN for each restored item
+    for (const item of (items||[])) {
+      const inv = item.group === 'SUB' ? 'inventory_sub' : 'inventory_main';
+      const rows = await sb(`${inv}?product=eq.${encodeURIComponent(item.name)}&select=id,in_qty`);
+      if (rows.length) {
+        await sb(`${inv}?id=eq.${rows[0].id}`, 'PATCH', {
+          in_qty: (Number(rows[0].in_qty)||0) + Number(item.qty)
+        });
+      }
+    }
+    // Update the return record notes
+    if (returnBillNo) {
+      const ret = await sb(`returns?return_bill_no=eq.${encodeURIComponent(returnBillNo)}&select=id,notes`);
+      if (ret.length) {
+        const addNote = `[Restored: ${(items||[]).map(i=>i.name+'×'+i.qty).join(', ')}${notes?' — '+notes:''}]`;
+        await sb(`returns?id=eq.${ret[0].id}`, 'PATCH', {
+          notes: [(ret[0].notes||''), addNote].filter(Boolean).join(' '),
+          status: 'FULLY RETURNED'
+        });
+      }
+    }
+    await telegram(
+      `✅ *Missing Items Restored — ${returnBillNo||''}*\n` +
+      `📦 Items: ${(items||[]).map(i=>i.name+' ×'+i.qty).join(', ')}\n` +
+      (notes ? `📝 ${notes}` : '')
+    );
+    return ok(res, { message: 'Missing items restored to inventory ✅' });
+  } catch(e) { return err(res, e.message); }
 }
 
 // ── UPLOAD XL DATA — REPLACE mode (not add) ──────────────────
