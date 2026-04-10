@@ -3,80 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GCS Inventory</title>
+<title>GCS – Bill Lookup</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Noto+Sans:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-:root{--gold:#C9A84C;--teal:#1abc9c;--bg:#111;--card:#181818;--bd:#2a2a2a;--tx:#e8e8e8;--mu:#777;--ok:#2ecc71;--er:#e74c3c;--wn:#f39c12}
+:root{--gold:#C9A84C;--teal:#1abc9c;--bg:#111;--card:#181818;--bd:#2a2a2a;--tx:#e8e8e8;--mu:#777;--ok:#2ecc71;--er:#e74c3c;--wn:#f39c12;--pu:#9b59b6}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--tx);font-family:'Noto Sans',sans-serif}
 header{background:linear-gradient(135deg,#0a0a0a,#1a1200);border-bottom:2px solid var(--gold);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:99}
 .logo{display:flex;align-items:center;gap:12px}
 .li{width:42px;height:42px;background:var(--gold);border-radius:8px;display:grid;place-items:center;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:#000;flex-shrink:0}
-.ln{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--gold)}
+.ln{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--gold)}
 .ls{font-size:10px;color:var(--mu);letter-spacing:2px;text-transform:uppercase}
 nav a{padding:7px 13px;border:1px solid var(--bd);border-radius:6px;color:var(--mu);text-decoration:none;font-size:12px;margin-left:6px;transition:.2s;font-family:'Rajdhani',sans-serif;font-weight:700}
 nav a:hover{border-color:var(--gold);color:var(--gold)}
 .wrap{max-width:1100px;margin:0 auto;padding:22px 14px}
-.cbar{background:#0a1200;border:1px solid #1a3000;border-radius:8px;padding:10px 15px;font-size:12px;color:#6ab;margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cdot{width:7px;height:7px;border-radius:50%;background:var(--wn);flex-shrink:0;animation:pu 2s infinite}
-@keyframes pu{0%,100%{opacity:1}50%{opacity:.3}}
 .tabs{display:flex;gap:5px;background:#1a1a1a;border:1px solid var(--bd);border-radius:10px;padding:5px;margin-bottom:20px}
-.tab{flex:1;padding:11px;text-align:center;border-radius:7px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--mu);transition:.2s}
+.tab{flex:1;padding:10px;text-align:center;border-radius:7px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--mu);transition:.2s}
 .tab.on{background:var(--gold);color:#000}
 .pane{display:none}.pane.on{display:block}
 .box{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:18px}
 .bh{font-family:'Rajdhani',sans-serif;font-size:16px;color:var(--gold);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .bh.t{color:var(--teal)}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.fl{display:flex;flex-direction:column;gap:5px;margin-bottom:2px}
-label{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px}
-input{background:#202020;border:1px solid var(--bd);border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit;transition:border .2s}
-input:focus{border-color:var(--gold)}
-.dur{background:#0a1200;border:1px solid #1a3000;border-radius:7px;padding:10px 14px;font-size:13px;color:var(--ok);text-align:center;margin-top:8px;font-weight:600}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{background:#1a1a1a;color:var(--gold);padding:10px 12px;text-align:left;font-family:'Rajdhani',sans-serif;font-size:12px;border-bottom:1px solid var(--bd)}
-td{padding:9px 12px;border-bottom:1px solid #1e1e1e;vertical-align:middle}
-tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
-.b-ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
-.b-lo{background:rgba(231,76,60,.12);color:var(--er);border:1px solid rgba(231,76,60,.3)}
-.grp-hdr td{background:#1a1200;color:var(--gold);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;padding:8px 12px;letter-spacing:.5px}
-.sb{background:#1a1200;border:1px solid #3a2800;border-radius:10px;padding:18px}
-.sr{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a1a00;font-size:13px;color:var(--mu)}
-.sr:last-child{border-bottom:none}
-.sgrand{display:flex;justify-content:space-between;padding:13px 0 2px;font-size:20px;font-family:'Rajdhani',sans-serif;color:var(--gold);border-top:2px solid var(--bd);margin-top:10px}
+.search-row{display:flex;gap:10px;flex-wrap:wrap}
+.search-row input,.search-row select{flex:1;min-width:180px;background:#202020;border:1px solid var(--bd);border-radius:8px;color:var(--tx);padding:12px 16px;font-size:14px;outline:none;font-family:inherit;transition:border .2s}
+.search-row input:focus,.search-row select:focus{border-color:var(--gold)}
+.search-row select option{background:#202020}
 .btn{padding:11px 22px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:.2s;letter-spacing:.5px}
-.bg{background:var(--gold);color:#000}.bg:hover{background:#d4a83a}
-.bt{background:var(--teal);color:#000}.bt:hover{background:#17a589}
+.bg{background:var(--gold);color:#000}.bg:hover{background:#d4a83a;transform:translateY(-1px)}
+.bt{background:var(--teal);color:#000}.bt:hover{background:#17a589;transform:translateY(-1px)}
 .bo{background:transparent;border:1px solid var(--gold);color:var(--gold)}.bo:hover{background:rgba(201,168,76,.1)}
 .bto{background:transparent;border:1px solid var(--teal);color:var(--teal)}.bto:hover{background:rgba(26,188,156,.1)}
 .br{background:rgba(231,76,60,.15);border:1px solid var(--er);color:var(--er)}
-.acts{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
-.note{background:#181200;border-left:3px solid var(--gold);padding:10px 14px;font-size:12px;color:#aaa;margin-bottom:14px;border-radius:0 6px 6px 0;line-height:1.6}
-.warn{background:#1a0f00;border-left:3px solid var(--wn);padding:10px 14px;font-size:12px;color:var(--wn);margin-top:10px;display:none;border-radius:0 6px 6px 0}
-.stock-panel{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:18px}
-.stock-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
-.sc{background:#111;border:1px solid var(--bd);border-radius:9px;padding:12px 14px}
-.sc-name{font-size:10px;color:var(--mu);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.sc-avail{font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--ok)}
-.sc-avail.low{color:var(--er)}.sc-avail.mid{color:var(--wn)}
-.sc-meta{font-size:11px;color:var(--mu);margin-top:2px}
-.sc-out{font-size:11px;color:var(--er);margin-top:2px}
-.rbtn{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700}
-.ac-wrap{position:relative}
+.pending-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:4px}
+.pc{background:#111;border:1px solid var(--bd);border-radius:10px;padding:14px 16px;position:relative;cursor:pointer;transition:.2s}
+.pc:hover{border-color:var(--gold)}
+.pc.overdue{border-color:rgba(231,76,60,.4);background:#1a0a0a}
+.pc-name{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700}
+.pc-phone{font-size:12px;color:var(--mu);margin-top:2px}
+.pc-bill{font-size:11px;color:var(--mu);margin-top:4px}
+.pc-bal{font-size:22px;font-family:'Rajdhani',sans-serif;font-weight:700;margin-top:6px}
+.pc-due{font-size:11px;margin-top:3px}
+.od-tag{position:absolute;top:10px;right:10px;background:rgba(231,76,60,.2);border:1px solid var(--er);color:var(--er);border-radius:4px;font-size:10px;padding:2px 7px;font-family:'Rajdhani',sans-serif;font-weight:700}
+.summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.stat-card{background:#111;border:1px solid var(--bd);border-radius:9px;padding:12px 14px;text-align:center}
+.stat-card .sv{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700}
+.stat-card .sl{font-size:11px;color:var(--mu);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+.bill-card{background:#111;border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:12px;cursor:pointer;transition:.2s}
+.bill-card:hover{border-color:var(--gold);background:#151500}
+.bill-card.ret-card:hover{border-color:var(--teal);background:#001510}
+.bc-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.bc-billno{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--gold)}
+.bc-billno.ret{color:var(--teal)}
+.bc-date{font-size:11px;color:var(--mu)}
+.bc-name{font-size:14px;font-weight:600;margin-top:4px}
+.bc-phone{font-size:12px;color:var(--mu)}
+.bc-items{font-size:12px;color:var(--mu);margin-top:6px}
+.bc-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:6px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.b-ok{background:rgba(46,204,113,.12);color:var(--ok);border:1px solid rgba(46,204,113,.3)}
+.b-er{background:rgba(231,76,60,.12);color:var(--er);border:1px solid rgba(231,76,60,.3)}
+.b-pu{background:rgba(155,89,182,.12);color:var(--pu);border:1px solid rgba(155,89,182,.3)}
+.b-type{background:#222;color:var(--mu);border:1px solid var(--bd);font-size:10px;padding:2px 8px;border-radius:4px}
+.bc-bal{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700}
+.ac-wrap{position:relative;flex:1;min-width:200px}
 .ac-list{position:absolute;top:100%;left:0;right:0;background:#1e1e1e;border:1px solid var(--gold);border-radius:0 0 8px 8px;z-index:50;max-height:220px;overflow-y:auto;display:none}
-.ac-item{padding:9px 13px;cursor:pointer;font-size:12px;border-bottom:1px solid #2a2a2a}
-.ac-item:hover{background:#2a1a00;color:var(--gold)}
-.ac-no{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);font-size:13px}
-.ac-meta{color:var(--mu);font-size:11px;margin-top:2px}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;overflow-y:auto;padding:14px}
-.mbox{max-width:720px;margin:18px auto;background:#fff;border-radius:12px;padding:34px}
+.ac-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #2a2a2a;transition:.15s}
+.ac-item:hover{background:#2a2000;color:var(--gold)}
+.ac-item:last-child{border-bottom:none}
+.ac-item .ac-no{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);font-size:14px}
+.ac-item .ac-name{color:var(--tx);font-size:12px;margin-top:2px}
+.ac-item .ac-bal{font-size:11px;margin-top:1px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;overflow-y:auto;padding:14px}
+.mbox{max-width:720px;margin:18px auto;background:#fff;border-radius:12px;padding:34px;color:#111;font-family:'Noto Sans',Arial,sans-serif}
 .ma{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
-.toast{position:fixed;bottom:22px;right:22px;background:#222;border:1px solid var(--gold);color:var(--tx);padding:13px 18px;border-radius:10px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px}
+.toast{position:fixed;bottom:22px;right:22px;background:#222;border:1px solid var(--gold);color:var(--tx);padding:13px 18px;border-radius:10px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:.3s;max-width:320px;line-height:1.5}
 .toast.on{transform:translateY(0);opacity:1}
-@media(max-width:600px){.g2,.g3{grid-template-columns:1fr}.tabs{flex-direction:column}}
+.empty{text-align:center;color:var(--mu);font-size:13px;padding:30px}
+.loading{text-align:center;color:var(--mu);font-size:13px;padding:20px}
+.refresh-btn{background:transparent;border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;transition:.2s}
+.refresh-btn:hover{background:rgba(201,168,76,.1)}
+.note{background:#181200;border-left:3px solid var(--gold);padding:10px 14px;font-size:12px;color:#aaa;margin-bottom:14px;border-radius:0 6px 6px 0;line-height:1.6}
+@media(max-width:600px){.search-row{flex-direction:column}.bc-top{flex-direction:column}.tabs{flex-direction:column}}
 </style>
 </head>
 <body>
@@ -84,789 +92,852 @@ tr:last-child td{border-bottom:none}
   <div class="logo">
     <div class="li">GC</div>
     <div>
-      <div class="ln">GCS Inventory</div>
-      <div class="ls">Garuda Construction Service</div>
+      <div class="ln">GARUDA CONSTRUCTION SERVICE</div>
+      <div class="ls">Bill Lookup &amp; Pending Balance</div>
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">📋 Bills</a>
+    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">🏗️ GCS Inventory</a>
+
   </nav>
 </header>
 
 <div class="wrap">
-
-  <!-- STATUS BAR -->
-  <div class="cbar">
-    <span class="cdot" id="api-dot"></span>
-    <span id="api-txt">Connecting…</span>
+  <div style="background:#181200;border:1px solid #2a2000;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px">
+    <span style="width:7px;height:7px;border-radius:50%;background:var(--wn);flex-shrink:0;animation:pu 2s infinite;display:inline-block" id="b-dot"></span>
+    <span id="b-txt">Connecting to Supabase…</span>
     &nbsp;|&nbsp;
-    <button onclick="dlXL()" style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">⬇ Excel</button>
-    <label style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">⬆ Upload XL<input type="file" id="xl-file" accept=".xlsx,.xls" style="display:none" onchange="ulXL(this)"></label>
-    <span id="xl-st" style="font-size:11px;color:var(--ok)"></span>
+    <button onclick="bDlXL()" style="background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:11px;padding:3px 10px;cursor:pointer">⬇ Download Excel</button>
   </div>
-
-  <!-- MAIN TABS -->
   <div class="tabs">
-    <div class="tab on" onclick="swTab('dispatch')">📤 DISPATCH ORDER</div>
-    <div class="tab"    onclick="swTab('return')">📥 RETURN ITEMS</div>
+    <div class="tab on"  onclick="switchTab('search')">🔍 DISPATCH BILLS</div>
+    <div class="tab"     onclick="switchTab('returns')">📥 RETURN BILLS</div>
+    <div class="tab"     onclick="switchTab('pending')">💰 PENDING BALANCE</div>
+    <div class="tab"     onclick="switchTab('missing')">⚠️ MISSING ITEMS</div>
   </div>
 
-  <!-- LIVE STOCK -->
-  <div class="stock-panel">
-    <div class="bh">📊 Live Stock — All Inventory <button class="rbtn" onclick="loadStock()">⟳ Refresh</button></div>
-    <div class="stock-grid" id="stock-grid"><div style="color:var(--mu);font-size:12px;padding:10px">Loading…</div></div>
-    <div style="font-size:11px;color:var(--mu);margin-top:8px">Updated: <span id="stock-upd">—</span></div>
+  <!-- ═══ TAB 1: DISPATCH SEARCH ═══ -->
+  <div id="pane-search" class="pane on">
+    <div class="box">
+      <div class="bh">🔍 Search Dispatch Bills</div>
+      <div class="note">Type Bill No (GCS-M-) / Customer Name / Mobile — auto-suggest appears after 2 characters</div>
+      <div class="search-row">
+        <div class="ac-wrap">
+          <input id="search-input" placeholder="Bill No / Name / Mobile" oninput="onAC(this.value,'d')" onkeydown="if(event.key==='Enter')searchBills()" autocomplete="off">
+          <div class="ac-list" id="ac-d"></div>
+        </div>
+<button class="btn bg" onclick="searchBills()">🔍 Search</button>
+        <button class="btn bo" onclick="clearSearch()">✕ Clear</button>
+      </div>
+    </div>
+    <div id="results-box" style="display:none">
+      <div class="box">
+        <div class="bh">📋 Results <span id="results-count" style="font-size:12px;color:var(--mu);font-family:'Noto Sans'"></span></div>
+        <div id="results-list"></div>
+      </div>
+    </div>
   </div>
 
-  <!-- ═══════════════ DISPATCH PANE ═══════════════ -->
-  <div id="pane-dispatch" class="pane on">
-
+  <!-- ═══ TAB 2: RETURNS ═══ -->
+  <div id="pane-returns" class="pane">
     <div class="box">
-      <div class="bh">👤 Customer Details</div>
-      <div class="g3">
-        <div class="fl"><label>Customer Name *</label><input id="d-name" placeholder="Full name"></div>
-        <div class="fl"><label>Contact Number *</label><input id="d-phone" placeholder="+91 XXXXX XXXXX" type="tel"></div>
-        <div class="fl"><label>Order Date</label><input id="d-date" type="date"></div>
-      </div>
-      <div class="g2" style="margin-top:12px">
-        <div class="fl"><label>OUT Date &amp; Time — Materials Leave *</label><input id="d-out" type="datetime-local" oninput="calcD()"></div>
-        <div class="fl"><label>Expected IN / Return Date *</label><input id="d-in" type="datetime-local" oninput="calcD()"></div>
-      </div>
-      <div class="dur" id="d-dur">Set OUT &amp; IN dates — duration calculates automatically</div>
-      <div class="fl" style="margin-top:12px"><label>Site Address</label><input id="d-addr" placeholder="Construction site / address"></div>
-    </div>
-
-    <div class="box">
-      <div class="bh">📦 Products — All Inventory</div>
-      <div class="note">Enter rate per piece per day, then quantity. Subtotal = Qty × Rate × Days. Select items from both Main and Sub inventory in one bill.</div>
-      <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr><th>#</th><th>Product</th><th>Available</th><th>Rate (Rs/pc/day) *</th><th>Qty</th><th>Subtotal</th></tr>
-        </thead>
-        <tbody id="d-tbody"></tbody>
-      </table>
-      </div>
-      <div class="warn" id="d-warn">⚠ Set OUT &amp; IN dates above first — subtotals need dates to calculate.</div>
-    </div>
-
-    <div class="box">
-      <div class="bh">💰 Bill Summary</div>
-      <div class="sb">
-        <div class="sr"><span>Duration</span><span id="d-sum-dur" style="color:var(--tx)">Set dates above</span></div>
-        <div class="sr"><span>Total Rental Amount</span><span id="d-sum-total" style="color:var(--gold);font-weight:700;font-size:16px">₹ 0</span></div>
-        <div class="sr"><span>Advance Paid (Rs)</span><input type="number" id="d-adv" style="width:140px;text-align:right;background:#111;border-color:#3a2800;padding:8px 10px" placeholder="0" min="0" oninput="calcD()"></div>
-        <div class="sr"><span>Balance Due</span><span id="d-sum-bal" style="color:var(--er);font-weight:700;font-size:16px">₹ 0</span></div>
-        <div class="sgrand"><span>GRAND TOTAL</span><span id="d-sum-grand">₹ 0</span></div>
-      </div>
-      <div class="acts">
-        <button class="btn bo" onclick="previewD()">👁 Preview Bill</button>
-        <button class="btn bg" onclick="placeD()">✅ Place Order &amp; PDF</button>
-      </div>
-    </div>
-
-  </div><!-- /dispatch -->
-
-  <!-- ═══════════════ RETURN PANE ═══════════════ -->
-  <div id="pane-return" class="pane">
-
-    <!-- Auto-fill search -->
-    <div class="box" style="background:#001a12;border-color:#0a3a20">
-      <div class="bh t" style="margin-bottom:10px">🔍 Auto-fill from Original Dispatch Bill</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <div class="ac-wrap" style="flex:1;min-width:200px">
-          <input id="r-search" placeholder="Bill No / Customer Name / Mobile" oninput="retAC(this.value)" autocomplete="off"
-            style="background:#0a1a10;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;width:100%;outline:none;font-family:inherit">
-          <div class="ac-list" id="r-ac" style="border-color:var(--teal)"></div>
+      <div class="bh t">📥 Search Return Bills</div>
+      <div class="note" style="border-color:var(--teal)">Search by Return Bill No / Original Bill No / Customer Name / Mobile</div>
+      <div class="search-row">
+        <div class="ac-wrap">
+          <input id="ret-input" placeholder="Return Bill No / Orig Bill No / Name / Mobile" oninput="onAC(this.value,'r')" onkeydown="if(event.key==='Enter')searchReturns()" autocomplete="off">
+          <div class="ac-list" id="ac-r"></div>
         </div>
-        <button class="btn bt" onclick="retFetch()">🔍 Fetch &amp; Fill</button>
-        <button class="btn bto" onclick="retClear()">✕ Clear</button>
+        <button class="btn bt" onclick="searchReturns()">🔍 Search</button>
+        <button class="btn bto" onclick="clearRet()">✕ Clear</button>
       </div>
-      <div id="r-fill-info" style="margin-top:10px;font-size:12px;color:var(--mu)"></div>
     </div>
+    <div id="ret-results-box" style="display:none">
+      <div class="box">
+        <div class="bh t">📋 Return Results <span id="ret-count" style="font-size:12px;color:var(--mu);font-family:'Noto Sans'"></span></div>
+        <div id="ret-results-list"></div>
+      </div>
+    </div>
+  </div>
 
+  <!-- ═══ TAB 3: PENDING ═══ -->
+  <div id="pane-pending" class="pane">
     <div class="box">
-      <div class="bh t">📥 Return Details</div>
-      <div class="g3">
-        <div class="fl"><label>Original Bill No *</label><input id="r-bill" placeholder="GCS-XXXXXX"></div>
-        <div class="fl"><label>Customer Name *</label><input id="r-name" placeholder="Same as original"></div>
-        <div class="fl"><label>Contact Number *</label><input id="r-phone" placeholder="+91 XXXXX XXXXX" type="tel"></div>
+      <div class="bh">💰 Live Pending Balances <button class="refresh-btn" onclick="loadPending()">⟳ Refresh</button></div>
+      <div class="summary-stats" id="pstats" style="display:none">
+        <div class="stat-card"><div class="sv" id="st-cnt" style="color:var(--wn)">0</div><div class="sl">Pending Bills</div></div>
+        <div class="stat-card"><div class="sv" id="st-od"  style="color:var(--er)">0</div><div class="sl">Overdue Bills</div></div>
+        <div class="stat-card"><div class="sv" id="st-tot" style="color:var(--er)">₹0</div><div class="sl">Total Outstanding</div></div>
+        <div class="stat-card"><div class="sv" id="st-ret" style="color:var(--pu)">₹0</div><div class="sl">Return Pending</div></div>
       </div>
-      <div class="g2" style="margin-top:12px">
-        <div class="fl"><label>Original OUT Date</label><input id="r-out" type="datetime-local" oninput="calcR()"></div>
-        <div class="fl"><label>Actual Return Date &amp; Time *</label><input id="r-back" type="datetime-local" oninput="calcR()"></div>
-      </div>
-      <div class="dur" id="r-dur" style="border-color:var(--teal);color:var(--teal)">Set OUT &amp; return dates — actual duration will calculate</div>
-      <div class="fl" style="margin-top:12px"><label>Notes</label><input id="r-notes" placeholder="Condition of items, any remarks…"></div>
+      <div id="pending-grid" class="pending-grid"><div class="loading">Loading…</div></div>
     </div>
+  </div>
 
+  <!-- ═══ TAB 4: MISSING MATERIALS ═══ -->
+  <div id="pane-missing" class="pane">
     <div class="box">
-      <div class="bh t">📦 Items Being Returned</div>
-      <div class="note" style="border-color:var(--teal)">Enter rate per piece per day and return quantity. Shows dispatched qty and missing items automatically.</div>
-      <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th><th>Product</th><th>Dispatched</th>
-            <th>Rate (Rs/pc/day) *</th><th>Return Qty</th>
-            <th style="color:var(--er)">Missing</th><th>Amount</th>
-          </tr>
-        </thead>
-        <tbody id="r-tbody"></tbody>
-      </table>
+      <div class="bh" style="color:var(--wn)">⚠️ Missing / Pending Return Materials <button class="refresh-btn" style="border-color:var(--wn);color:var(--wn)" onclick="loadMissing()">⟳ Refresh</button></div>
+      <div class="note" style="border-color:var(--wn);background:#1a0f00">
+        Shows customers who returned items with <strong style="color:#eee">missing quantities</strong> or <strong style="color:#eee">partial returns</strong>. Materials not yet returned appear here.
       </div>
+      <div id="missing-grid" style="margin-top:12px"><div class="loading">Click Refresh to load missing materials report</div></div>
     </div>
+  </div>
 
-    <div class="box">
-      <div class="bh t">💳 Payment Settlement</div>
-      <div class="sb" style="background:#001a12;border-color:#0a3a20">
-        <div class="sr" style="border-bottom-color:#0a2818"><span>Actual Duration</span><span id="r-sum-dur" style="color:var(--tx)">Set dates above</span></div>
-        <div class="sr" style="border-bottom-color:#0a2818"><span>Total Rental (Recalculated)</span><span id="r-sum-total" style="color:var(--teal);font-weight:700;font-size:16px">₹ 0</span></div>
-        <div class="sr" style="border-bottom-color:#0a2818">
-          <span>Previous Advance Paid</span>
-          <input type="number" id="r-prev" style="width:140px;text-align:right;background:#001a12;border-color:#0a3a20;padding:8px 10px" placeholder="Original advance" min="0" oninput="calcR()">
-        </div>
-        <div class="sr" style="border-bottom-color:#0a2818">
-          <span>Additional Payment Now</span>
-          <input type="number" id="r-addpay" style="width:140px;text-align:right;background:#001a12;border-color:#0a3a20;padding:8px 10px" placeholder="0" min="0" oninput="calcR()">
-        </div>
-        <div class="sr"><span>Final Balance</span><span id="r-sum-bal" style="font-weight:700;font-size:16px;color:var(--er)">₹ 0</span></div>
-        <div class="sgrand" style="color:var(--teal);border-top-color:#0a3a20"><span>STATUS</span><span id="r-status" style="font-size:16px">PENDING</span></div>
-      </div>
-      <div class="acts">
-        <button class="btn bto" onclick="previewR()">👁 Preview Receipt</button>
-        <button class="btn bt" onclick="placeR()">✅ Process Return &amp; PDF</button>
-      </div>
-    </div>
+</div>
 
-  </div><!-- /return -->
-
-</div><!-- /wrap -->
-
-<!-- MODAL -->
+<!-- MODALS -->
 <div class="modal" id="bill-modal">
   <div class="mbox">
     <div id="bill-content"></div>
     <div class="ma">
-      <button class="btn br" onclick="el('bill-modal').style.display='none'">✖ Close</button>
+      <button class="btn br" onclick="cm('bill-modal')">✖ Close</button>
       <button class="btn bg" onclick="dlPDF()">⬇ PDF</button>
-      <button class="btn" style="background:#25D366;color:#fff" onclick="shareWA()">📲 WhatsApp</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="waDisp()">📲 WhatsApp</button>
     </div>
   </div>
 </div>
-<div class="toast" id="gcs-toast"></div>
+<div class="modal" id="ret-modal">
+  <div class="mbox">
+    <div id="ret-content"></div>
+    <div class="ma">
+      <button class="btn br" onclick="cm('ret-modal')">✖ Close</button>
+      <button class="btn bt" onclick="dlRetPDF()">⬇ PDF</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="waRet()">📲 WhatsApp</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast-msg"></div>
 
 <script>
-const API = 'https://garuda-api.vercel.app/api';
+var API='https://garuda-api.vercel.app/api';
+var curBill=null, curRet=null, allBills=[], allRets=[];
 
-// ── ALL 12 PRODUCTS — Main + Sub merged ───────────────────────
-const ALL_PRODUCTS = [
-  // ── MAIN INVENTORY ──
-  {id:1,  name:'1 inch sheet',           stock:1300, group:'MAIN'},
-  {id:2,  name:'1 1/2 inch sheet',       stock:300,  group:'MAIN'},
-  {id:3,  name:'Span',                   stock:526,  group:'MAIN'},
-  {id:4,  name:'Jacky',                  stock:1073, group:'MAIN'},
-  // ── SUB INVENTORY ──
-  {id:5,  name:'Biller Box 7 feet 1 3/4',stock:26,   group:'SUB'},
-  {id:6,  name:'Biller Box 7 feet 3/4',  stock:24,   group:'SUB'},
-  {id:7,  name:'Tie Beam Sheet - 2 feet', stock:50,   group:'SUB'},
-  {id:8,  name:'Tie Beam Sheet - 3 feet', stock:50,   group:'SUB'},
-  {id:9,  name:'Tie Beam Sheet - 4 feet', stock:50,   group:'SUB'},
-  {id:10, name:'Tie Beam Sheet - 5 feet', stock:100,  group:'SUB'},
-  {id:11, name:'Tie Beam Sheet - 6 feet', stock:100,  group:'SUB'},
-  {id:12, name:'Tie Beam Sheet - 7 feet', stock:10,   group:'SUB'}
-];
+window.addEventListener('load',function(){ loadPending(); prefetch(); });
 
-// ── STATE ──────────────────────────────────────────────────────
-var dQty={}, dPrice={};
-var rQty={}, rPrice={}, rDispatched={};
-var curBill=null, curMode='dispatch';
-
-// ── HELPERS ────────────────────────────────────────────────────
 function el(id){return document.getElementById(id);}
-function val(id){return el(id)?el(id).value.trim():'';}
-function ru(v){return '₹ '+Number(v||0).toLocaleString('en-IN');}
-function td(){return new Date().toISOString().split('T')[0];}
-function nowDT(){var n=new Date();n.setMinutes(n.getMinutes()-n.getTimezoneOffset());return n.toISOString().slice(0,16);}
-function newBN(){return 'GCS-'+Date.now().toString().slice(-6);}
-function fdt(s){if(!s)return '—';try{return new Date(s).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return s;}}
-function dur(out,inn){
-  if(!out||!inn)return {days:0,months:0,ok:false};
-  var ms=new Date(inn)-new Date(out);
-  if(ms<=0)return {days:0,months:0,ok:false};
-  var d=Math.ceil(ms/86400000);
-  return {days:d,months:Math.ceil(d/30),ok:true};
-}
-
-// ── INIT ───────────────────────────────────────────────────────
-window.addEventListener('load',function(){
-  el('d-date').value=td();
-  el('r-back').value=nowDT();
-  ALL_PRODUCTS.forEach(function(p){
-    dQty[p.id]=0; dPrice[p.id]=0;
-    rQty[p.id]=0; rPrice[p.id]=0; rDispatched[p.id]=0;
+function cm(id){el(id).style.display='none';}
+function switchTab(t){
+  ['search','returns','pending','missing'].forEach(function(n,i){
+    el('pane-'+n).classList.toggle('on',n===t);
+    document.querySelectorAll('.tab')[i].classList.toggle('on',n===t);
   });
-  buildD(); buildR();
-  loadStock();
-  ping();
-});
-
-// ── TAB SWITCH ─────────────────────────────────────────────────
-function swTab(t){
-  document.querySelectorAll('.tab').forEach(function(tb,i){
-    tb.classList.toggle('on',(i===0&&t==='dispatch')||(i===1&&t==='return'));
-  });
-  el('pane-dispatch').classList.toggle('on',t==='dispatch');
-  el('pane-return').classList.toggle('on',t==='return');
+  if(t==='missing') loadMissing();
+  if(t==='pending') loadPending();
 }
 
-// ── PING ───────────────────────────────────────────────────────
-function ping(){
-  fetch(API+'?action=ping').then(function(r){return r.json();})
-    .then(function(d){
-      el('api-dot').style.background=d.status==='ok'?'var(--ok)':'var(--er)';
-      el('api-txt').textContent=d.status==='ok'?'✅ Connected to Supabase':'⚠ API error';
-    }).catch(function(){
-      el('api-dot').style.background='var(--er)';
-      el('api-txt').textContent='⚠ Cannot connect — check Vercel';
-    });
+// ── PREFETCH ──────────────────────────────────────────────────
+function prefetch(){
+  fetch(API+'?action=getBills&q=').then(function(r){return r.json();}).then(function(d){if(d.status==='ok')allBills=d.bills||[];}).catch(function(){});
+  fetch(API+'?action=getReturns&q=').then(function(r){return r.json();}).then(function(d){if(d.status==='ok')allRets=d.returns||[];}).catch(function(){});
 }
 
-// ── LIVE STOCK ─────────────────────────────────────────────────
-function loadStock(){
-  el('stock-grid').innerHTML='<div style="color:var(--mu);font-size:12px;padding:10px">⟳ Loading live stock…</div>';
-  Promise.all([
-    fetch(API+'?action=getStock&sheet=MAIN').then(function(r){return r.json();}),
-    fetch(API+'?action=getStock&sheet=SUB').then(function(r){return r.json();})
-  ]).then(function(results){
-    var mainStock=results[0].status==='ok'?results[0].stock:[];
-    var subStock =results[1].status==='ok'?results[1].stock:[];
-    var allStock=mainStock.concat(subStock);
-    // Update ALL_PRODUCTS stock with live data — fuzzy match
-    allStock.forEach(function(s){
-      var sName=s.name.trim().toLowerCase();
-      var p=ALL_PRODUCTS.find(function(x){
-        var xName=x.name.trim().toLowerCase();
-        return xName===sName || xName.indexOf(sName)!==-1 || sName.indexOf(xName)!==-1;
-      });
-      if(p){
-        p.stock=Number(s.available)||0;
-        p.out=Number(s.out)||0;
-        p.total=Number(s.total)||0;
-      }
-    });
-    buildD(); // rebuild dispatch table with fresh stock
-    buildR(); // rebuild return table too
-    if(!allStock.length){
-      el('stock-grid').innerHTML='<div style="color:var(--wn);font-size:12px;padding:10px">⚠ No stock data received. Check API.</div>';
-      return;
-    }
-    el('stock-grid').innerHTML=allStock.map(function(s){
-      var pct=s.total>0?s.available/s.total:1;
-      var cls=pct>0.5?'':pct>0.2?'mid':'low';
-      var outPct=s.total>0?s.out/s.total:0;
-      return '<div class="sc">'+
-        '<div class="sc-name">'+s.name+'</div>'+
-        '<div class="sc-avail '+cls+'">'+s.available+' <span style="font-size:12px;font-weight:400">pcs</span></div>'+
-        '<div class="sc-meta">Total: '+s.total+' pcs</div>'+
-        (s.out>0?'<div class="sc-out">⬆ Out: '+s.out+' pcs</div>':'')+
-        '</div>';
-    }).join('');
-    el('stock-upd').textContent=new Date().toLocaleTimeString('en-IN');
-  }).catch(function(e){
-    el('stock-grid').innerHTML='<div style="color:var(--er);font-size:12px;padding:10px">⚠ Network error: '+e.message+'</div>';
-  });
-}
-
-// ── BUILD DISPATCH TABLE ───────────────────────────────────────
-function buildD(){
-  var tb=el('d-tbody'); if(!tb)return;
-  tb.innerHTML='';
-  var lastGroup='';
-  ALL_PRODUCTS.forEach(function(p,i){
-    if(p.group!==lastGroup){
-      var htr=document.createElement('tr');
-      htr.className='grp-hdr';
-      htr.innerHTML='<td colspan="6">'+(p.group==='MAIN'?'🏗️ MAIN INVENTORY':'📦 SUB INVENTORY')+'</td>';
-      tb.appendChild(htr);
-      lastGroup=p.group;
-    }
-    var tr=document.createElement('tr');
-    tr.innerHTML=
-      '<td style="color:var(--mu)">'+(i+1)+'</td>'+
-      '<td><strong>'+p.name+'</strong></td>'+
-      '<td><span class="badge '+(p.stock>10?'b-ok':'b-lo')+'">'+p.stock+' pcs</span></td>'+
-      '<td><input type="number" min="0" id="dp-'+p.id+'" placeholder="Rate/day" style="width:100px;text-align:center;border-color:var(--gold)" oninput="calcD()"></td>'+
-      '<td><input type="number" min="0" max="'+p.stock+'" value="0" id="dq-'+p.id+'" style="width:80px;text-align:center" oninput="dSetQty('+p.id+',this.value)"></td>'+
-      '<td id="ds-'+p.id+'" style="color:var(--mu);font-weight:700">₹ 0</td>';
-    tb.appendChild(tr);
-  });
-}
-
-function dSetQty(id,v){
-  var p=ALL_PRODUCTS.find(function(x){return x.id===id;});
-  dQty[id]=Math.max(0,Math.min(parseInt(v)||0,p?p.stock:999));
-  el('dq-'+id).value=dQty[id];
-  calcD();
-}
-
-function calcD(){
-  var d=dur(el('d-out').value,el('d-in').value);
-  el('d-dur').textContent=d.ok?d.days+' days = '+d.months+' month(s)':'Set OUT & IN dates';
-  el('d-sum-dur').textContent=d.ok?d.days+'d / '+d.months+'mo':'Set dates above';
-  var hasQty=ALL_PRODUCTS.some(function(p){return (dQty[p.id]||0)>0;});
-  el('d-warn').style.display=(!d.ok&&hasQty)?'block':'none';
-  var total=0;
-  ALL_PRODUCTS.forEach(function(p){
-    var qty=dQty[p.id]||0, price=parseFloat(el('dp-'+p.id)?el('dp-'+p.id).value:0)||0;
-    var cell=el('ds-'+p.id); if(!cell)return;
-    if(qty===0){cell.textContent='₹ 0';cell.style.color='var(--mu)';return;}
-    if(!d.ok){cell.textContent=qty+' pcs — set dates';cell.style.color='var(--wn)';return;}
-    var sub=qty*price*d.days;
-    cell.textContent=ru(sub);cell.style.color='var(--gold)';total+=sub;
-  });
-  var adv=parseFloat(el('d-adv').value)||0;
-  el('d-sum-total').textContent=ru(total);
-  el('d-sum-grand').textContent=ru(total);
-  el('d-sum-bal').textContent=ru(Math.max(0,total-adv));
-  return {total:total,adv:adv,bal:Math.max(0,total-adv),days:d.days,months:d.months,ok:d.ok};
-}
-
-// ── BUILD RETURN TABLE ─────────────────────────────────────────
-function buildR(){
-  var tb=el('r-tbody'); if(!tb)return;
-  tb.innerHTML='';
-  var lastGroup='';
-  ALL_PRODUCTS.forEach(function(p,i){
-    if(p.group!==lastGroup){
-      var htr=document.createElement('tr');
-      htr.className='grp-hdr';
-      htr.innerHTML='<td colspan="7">'+(p.group==='MAIN'?'🏗️ MAIN INVENTORY':'📦 SUB INVENTORY')+'</td>';
-      tb.appendChild(htr);
-      lastGroup=p.group;
-    }
-    var tr=document.createElement('tr');
-    tr.innerHTML=
-      '<td style="color:var(--mu)">'+(i+1)+'</td>'+
-      '<td><strong>'+p.name+'</strong></td>'+
-      '<td id="rd-'+p.id+'" style="color:var(--mu)">—</td>'+
-      '<td><input type="number" min="0" id="rp-'+p.id+'" placeholder="Rate/day" style="width:100px;text-align:center;border-color:var(--teal)" oninput="calcR()"></td>'+
-      '<td><input type="number" min="0" value="0" id="rq-'+p.id+'" style="width:80px;text-align:center;border-color:var(--teal)" oninput="rSetQty('+p.id+',this.value)"></td>'+
-      '<td id="rm-'+p.id+'" style="color:var(--wn);font-size:12px">—</td>'+
-      '<td id="rs-'+p.id+'" style="color:var(--mu);font-weight:700">₹ 0</td>';
-    tb.appendChild(tr);
-  });
-}
-
-function rSetQty(id,v){
-  rQty[id]=Math.max(0,parseInt(v)||0);
-  var disp=rDispatched[id]||0;
-  var miss=Math.max(0,disp-rQty[id]);
-  var mc=el('rm-'+id);
-  if(mc) mc.textContent=disp>0?(miss>0?'⚠ '+miss+' missing':'✅ complete'):'—';
-  if(mc) mc.style.color=miss>0?'var(--er)':'var(--ok)';
-  calcR();
-}
-
-function calcR(){
-  var d=dur(el('r-out').value,el('r-back').value);
-  el('r-dur').textContent=d.ok?'Actual: '+d.days+' days = '+d.months+' month(s)':'Set OUT & return dates';
-  el('r-sum-dur').textContent=d.ok?d.days+'d / '+d.months+'mo':'Set dates above';
-  var total=0;
-  ALL_PRODUCTS.forEach(function(p){
-    var qty=rQty[p.id]||0, price=parseFloat(el('rp-'+p.id)?el('rp-'+p.id).value:0)||0;
-    var cell=el('rs-'+p.id); if(!cell)return;
-    if(qty===0||!d.ok){cell.textContent='₹ 0';cell.style.color='var(--mu)';return;}
-    var sub=qty*price*d.days;
-    cell.textContent=ru(sub);cell.style.color='var(--teal)';total+=sub;
-  });
-  var prev=parseFloat(el('r-prev').value)||0;
-  var addP=parseFloat(el('r-addpay').value)||0;
-  var fb=total-prev-addP;
-  el('r-sum-total').textContent=ru(total);
-  el('r-sum-bal').textContent=fb<0?'🟡 REFUND '+ru(Math.abs(fb)):fb<=0?'✅ FULLY PAID':ru(fb);
-  el('r-sum-bal').style.color=fb<0?'#9b59b6':fb<=0?'var(--ok)':'var(--er)';
-  el('r-status').textContent=fb<0?'🟡 REFUND':fb<=0?'✅ FULLY PAID':'⚠ BALANCE DUE';
-  el('r-status').style.color=fb<0?'#9b59b6':fb<=0?'var(--ok)':'var(--er)';
-  return {total:total,prev:prev,addP:addP,fb:fb,days:d.days,months:d.months,ok:d.ok};
-}
-
-// ── VALIDATE ───────────────────────────────────────────────────
-function valD(){
-  if(!val('d-name')){toast('⚠ Enter customer name');return false;}
-  if(!val('d-phone')){toast('⚠ Enter contact number');return false;}
-  if(!el('d-out').value){toast('⚠ Set OUT date');return false;}
-  if(!el('d-in').value){toast('⚠ Set IN date');return false;}
-  var c=calcD(); if(!c.ok){toast('⚠ IN date must be after OUT');return false;}
-  if(!ALL_PRODUCTS.some(function(p){return (dQty[p.id]||0)>0;})){toast('⚠ Enter qty for at least one product');return false;}
-  return true;
-}
-function valR(){
-  if(!val('r-bill')){toast('⚠ Enter original bill number');return false;}
-  if(!val('r-name')){toast('⚠ Enter customer name');return false;}
-  if(!val('r-phone')){toast('⚠ Enter contact number');return false;}
-  if(!el('r-back').value){toast('⚠ Set return date');return false;}
-  if(!ALL_PRODUCTS.some(function(p){return (rQty[p.id]||0)>0;})){toast('⚠ Enter return qty for at least one item');return false;}
-  return true;
-}
-
-// ── BUILD BILL OBJECTS ─────────────────────────────────────────
-function buildDObj(){
-  var c=calcD();
-  var items=ALL_PRODUCTS.filter(function(p){return (dQty[p.id]||0)>0;}).map(function(p){
-    var price=parseFloat(el('dp-'+p.id)?el('dp-'+p.id).value:0)||0;
-    return {name:p.name,qty:dQty[p.id],price:price,type:'per day',amount:dQty[p.id]*price*c.days,group:p.group};
-  });
-  return {billNo:newBN(),date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
-    customer:val('d-name'),phone:val('d-phone'),address:val('d-addr'),
-    outDate:el('d-out').value,inDate:el('d-in').value,days:c.days,months:c.months,
-    items:items,total:c.total,advance:c.adv,balance:c.bal,
-    sheetType:'MAIN',action:'addOrder'};
-}
-function buildRObj(){
-  var c=calcR();
-  var items=ALL_PRODUCTS.filter(function(p){return (rQty[p.id]||0)>0;}).map(function(p){
-    var price=parseFloat(el('rp-'+p.id)?el('rp-'+p.id).value:0)||0;
-    var miss=Math.max(0,(rDispatched[p.id]||0)-rQty[p.id]);
-    return {name:p.name,qty:rQty[p.id],price:price,type:'per day',amount:rQty[p.id]*price*c.days,missing:miss,group:p.group};
-  });
-  return {returnBillNo:newBN(),originalBillNo:val('r-bill'),
-    date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
-    customer:val('r-name'),phone:val('r-phone'),
-    outDate:el('r-out').value,returnDate:el('r-back').value,
-    actualDays:c.days,actualMonths:c.months,
-    items:items,totalRental:c.total,prevAdvance:c.prev,additionalPay:c.addP,finalBalance:c.fb,
-    notes:val('r-notes'),sheetType:'MAIN',action:'addReturn'};
-}
-
-// ── PREVIEW / PLACE ────────────────────────────────────────────
-function previewD(){if(!valD())return;curBill=buildDObj();curMode='dispatch';el('bill-content').innerHTML=mkHTML(curBill,false);el('bill-modal').style.display='block';}
-function previewR(){if(!valR())return;curBill=buildRObj();curMode='return';el('bill-content').innerHTML=mkHTML(curBill,true);el('bill-modal').style.display='block';}
-
-function placeD(){
-  if(!valD())return;
-  curBill=buildDObj();curMode='dispatch';
-  postAPI(curBill);
-  toast('✅ Order saved! Generating PDF…');
-  el('bill-content').innerHTML=mkHTML(curBill,false);
-  el('bill-modal').style.display='block';
-  setTimeout(dlPDF,700);
-}
-function placeR(){
-  if(!valR())return;
-  curBill=buildRObj();curMode='return';
-  postAPI(curBill);
-  toast('✅ Return saved! Generating PDF…');
-  el('bill-content').innerHTML=mkHTML(curBill,true);
-  el('bill-modal').style.display='block';
-  setTimeout(dlPDF,700);
-}
-
-function postAPI(data){
-  return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-    .then(function(r){return r.json();}).catch(function(e){console.error(e);});
-}
-
-// ── RETURN AUTO-FILL ───────────────────────────────────────────
-var _rc=[];
-function retAC(q){
-  var list=el('r-ac'); q=(q||'').trim().toLowerCase();
+// ── AUTOCOMPLETE ─────────────────────────────────────────────
+function onAC(q,t){
+  var listId=t==='r'?'ac-r':'ac-d';
+  var list=el(listId);
+  q=q.trim().toLowerCase();
   if(q.length<2){list.style.display='none';return;}
-  var m=_rc.filter(function(b){
-    return (b.billNo||'').toLowerCase().indexOf(q)!==-1||(b.customer||'').toLowerCase().indexOf(q)!==-1||(b.phone||'').indexOf(q)!==-1;
+  var src=t==='r'?allRets:allBills;
+  var m=src.filter(function(b){
+    var no=t==='r'?b.returnBillNo:b.billNo;
+    return (no||'').toLowerCase().indexOf(q)!==-1||
+           (b.originalBillNo||'').toLowerCase().indexOf(q)!==-1||
+           (b.customer||'').toLowerCase().indexOf(q)!==-1||
+           (b.phone||'').indexOf(q)!==-1;
   }).slice(0,8);
-  if(!m.length){
-    fetch(API+'?action=getBillById&id='+encodeURIComponent(q)).then(function(r){return r.json();})
-      .then(function(d){if(d&&d.status==='ok'&&d.bills){_rc=_rc.concat(d.bills);showRetAC(d.bills);}});
-    return;
-  }
-  showRetAC(m);
-}
-function showRetAC(bills){
-  var list=el('r-ac'); if(!bills||!bills.length){list.style.display='none';return;}
-  list.innerHTML=bills.map(function(b,i){
-    var idx=_rc.indexOf(b); if(idx===-1){_rc.push(b);idx=_rc.length-1;}
-    return '<div class="ac-item" data-idx="'+idx+'" onclick="retPick(this)">'+
-      '<div class="ac-no">'+b.billNo+'</div>'+
-      '<div class="ac-meta">👤 '+b.customer+' | 📞 '+b.phone+(Number(b.balance)>0?' | 🔴 ₹'+Number(b.balance).toLocaleString('en-IN'):'')+'</div></div>';
+  if(!m.length){list.style.display='none';return;}
+  list.innerHTML=m.map(function(b){
+    var no=t==='r'?b.returnBillNo:b.billNo;
+    var fb=t==='r'?Number(b.finalBalance):Number(b.balance);
+    var bs=t==='r'
+      ?(fb<0?'<span style="color:var(--pu)">🟡 Refund ₹'+Math.abs(fb).toLocaleString('en-IN')+'</span>':fb<=0?'<span style="color:var(--ok)">✅ Paid</span>':'<span style="color:var(--er)">🔴 ₹'+fb.toLocaleString('en-IN')+'</span>')
+      :(fb>0?'<span style="color:var(--er)">🔴 ₹'+fb.toLocaleString('en-IN')+' pending</span>':'<span style="color:var(--ok)">✅ Paid</span>');
+    return '<div class="ac-item" onclick="selAC(\''+no+'\',\''+t+'\')">' +
+      '<div class="ac-no">'+no+(b.originalBillNo&&t==='r'?' ← '+b.originalBillNo:'')+'</div>' +
+      '<div class="ac-name">👤 '+b.customer+' &nbsp; 📞 '+b.phone+'</div>' +
+      '<div class="ac-bal">'+bs+'</div></div>';
   }).join('');
   list.style.display='block';
 }
-function retPick(e){
-  var b=_rc[parseInt(e.getAttribute('data-idx'))];
-  el('r-search').value=b.billNo; el('r-ac').style.display='none'; fillRet(b);
-}
-function retFetch(){
-  var q=val('r-search'); if(!q){toast('⚠ Enter bill no / name / mobile');return;}
-  fetch(API+'?action=getBillById&id='+encodeURIComponent(q)).then(function(r){return r.json();})
-    .then(function(d){
-      if(!d||d.status!=='ok'||!d.bills||!d.bills.length){el('r-fill-info').innerHTML='<span style="color:var(--er)">⚠ No bill found for "'+q+'"</span>';return;}
-      d.bills.length===1?fillRet(d.bills[0]):showRetAC(d.bills);
-    });
-}
-function fillRet(b){
-  el('r-ac').style.display='none';
-  // Fill form fields
-  el('r-bill').value=b.billNo||'';
-  el('r-name').value=b.customer||'';
-  el('r-phone').value=b.phone||'';
-  el('r-out').value=b.outDate||'';
-  el('r-prev').value=b.advance||'';
-  // Fill all product qty + price from original dispatch
-  ALL_PRODUCTS.forEach(function(p){
-    var found=(b.items||[]).find(function(i){return i.name.trim().toLowerCase()===p.name.trim().toLowerCase();});
-    if(found){
-      rDispatched[p.id]=found.qty||0;
-      rQty[p.id]=found.qty||0;
-      var dEl=el('rd-'+p.id); if(dEl)dEl.textContent=found.qty+' pcs';
-      var qEl=el('rq-'+p.id); if(qEl)qEl.value=found.qty;
-      var pEl=el('rp-'+p.id);
-      if(pEl&&found.price){pEl.value=found.price; rPrice[p.id]=found.price;}  // ← price auto-fill
-      var mEl=el('rm-'+p.id); if(mEl){mEl.textContent='✅ complete';mEl.style.color='var(--ok)';}
-    } else {
-      rDispatched[p.id]=0; rQty[p.id]=0;
-      var dEl2=el('rd-'+p.id); if(dEl2)dEl2.textContent='—';
-    }
-  });
-  calcR();
-  el('r-fill-info').innerHTML=
-    '<div style="background:#001a12;border:1px solid #0a3a20;border-radius:6px;padding:10px 14px">'+
-    '✅ <b style="color:var(--teal)">Auto-filled!</b> 🧾 '+b.billNo+' | 👤 '+b.customer+'<br>'+
-    '📦 '+((b.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ')||'—')+'<br>'+
-    '<span style="color:var(--er);font-weight:700">🔴 Pending Balance: ₹'+Number(b.balance||0).toLocaleString('en-IN')+'</span></div>';
-  toast('✅ Auto-filled from: '+b.billNo);
-}
-function retClear(){el('r-search').value='';el('r-ac').style.display='none';el('r-fill-info').innerHTML='';}
 
-// ── BILL HTML ──────────────────────────────────────────────────
-function mkHTML(b,isR){
-  var ac=isR?'#1abc9c':'#C9A84C', bg=isR?'#001a12':'#0D0D0D';
-  var no=isR?b.returnBillNo:b.billNo, ttl=isR?'RETURN RECEIPT':'DISPATCH BILL';
+function selAC(v,t){
+  if(t==='r'){el('ret-input').value=v;el('ac-r').style.display='none';searchReturns();}
+  else{el('search-input').value=v;el('ac-d').style.display='none';searchBills();}
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.ac-wrap')){el('ac-d').style.display='none';el('ac-r').style.display='none';}
+});
+
+// ── SEARCH DISPATCH ───────────────────────────────────────────
+function searchBills(){
+  var q=el('search-input').value.trim();
+  if(!q){toast('⚠ Enter bill no / name / mobile');return;}
+  el('ac-d').style.display='none';
+  el('results-box').style.display='block';
+  el('results-list').innerHTML='<div class="loading">⟳ Searching…</div>';
+  el('results-count').textContent='';
+  fetch(API+'?action=getBills&q='+encodeURIComponent(q))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.status!=='ok'){el('results-list').innerHTML='<div class="empty">⚠ '+d.message+'</div>';return;}
+      var b=(d.bills||[]);
+      el('results-count').textContent='('+b.length+' found)';
+      el('results-list').innerHTML=b.length?b.map(rBC).join(''):'<div class="empty">No bills found for "'+q+'"</div>';
+    }).catch(function(e){el('results-list').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
+function clearSearch(){el('search-input').value='';el('results-box').style.display='none';el('results-list').innerHTML='';el('ac-d').style.display='none';}
+
+// ── SEARCH RETURNS ────────────────────────────────────────────
+function searchReturns(){
+  var q=el('ret-input').value.trim();
+  if(!q){toast('⚠ Enter bill no / name / mobile');return;}
+  el('ac-r').style.display='none';
+  el('ret-results-box').style.display='block';
+  el('ret-results-list').innerHTML='<div class="loading">⟳ Searching returns…</div>';
+  el('ret-count').textContent='';
+  fetch(API+'?action=getReturns&q='+encodeURIComponent(q))
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.status!=='ok'){el('ret-results-list').innerHTML='<div class="empty">⚠ '+d.message+'</div>';return;}
+      var r=d.returns||[];
+      el('ret-count').textContent='('+r.length+' found)';
+      el('ret-results-list').innerHTML=r.length?r.map(rRC).join(''):'<div class="empty">No return bills found for "'+q+'"</div>';
+    }).catch(function(e){el('ret-results-list').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
+function clearRet(){el('ret-input').value='';el('ret-results-box').style.display='none';el('ret-results-list').innerHTML='';el('ac-r').style.display='none';}
+
+// ── RENDER CARDS ──────────────────────────────────────────────
+function rBC(b){
+  var ip=b.status==='PAID'||b.balance<=0;
+  var is=(b.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ');
+  return '<div class="bill-card" onclick=\'openB('+JSON.stringify(b)+')\'>' +
+    '<div class="bc-top"><div><div class="bc-billno">'+b.billNo+'</div><span class="b-type">'+(b.sheetType||'MAIN')+'</span></div>' +
+    '<div style="text-align:right"><div class="bc-date">'+b.date+'</div><span class="badge '+(ip?'b-ok':'b-er')+'">'+(ip?'✅ PAID':'⚠ PENDING')+'</span></div></div>' +
+    '<div class="bc-name">👤 '+b.customer+'</div>' +
+    '<div class="bc-phone">📞 '+b.phone+(b.address?' | 📍 '+b.address:'')+'</div>' +
+    '<div class="bc-items">📦 '+(is||'—')+'</div>' +
+    '<div class="bc-bottom"><div style="font-size:12px;color:var(--mu)">⏱ '+b.days+'d/'+b.months+'mo | OUT: '+fd(b.outDate)+'</div>' +
+    '<div class="bc-bal" style="color:'+(ip?'var(--ok)':'var(--er)')+'">'+(ip?'✅ PAID':'₹ '+Number(b.balance).toLocaleString('en-IN')+' pending')+'</div></div></div>';
+}
+
+function rRC(r){
+  var fb=Number(r.finalBalance), isRef=fb<0, ip=r.status==='FULLY PAID'||fb<=0;
+  var is=(r.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ');
+  var sb=isRef?'<span class="badge b-pu">🟡 REFUND DUE</span>':ip?'<span class="badge b-ok">✅ FULLY PAID</span>':'<span class="badge b-er">⚠ BALANCE DUE</span>';
+  return '<div class="bill-card ret-card" onclick=\'openR('+JSON.stringify(r)+')\'>' +
+    '<div class="bc-top"><div><div class="bc-billno ret">'+r.returnBillNo+'</div><span class="b-type" style="border-color:var(--teal);color:var(--teal)">RETURN</span></div>' +
+    '<div style="text-align:right"><div class="bc-date">Ref: '+r.originalBillNo+'</div>'+sb+'</div></div>' +
+    '<div class="bc-name">👤 '+r.customer+'</div><div class="bc-phone">📞 '+r.phone+'</div>' +
+    '<div class="bc-items">📦 Returned: '+(is||'—')+'</div>' +
+    '<div class="bc-bottom"><div style="font-size:12px;color:var(--mu)">⏱ Actual: '+r.actualDays+'d/'+r.actualMonths+'mo | '+fd(r.returnDate)+'</div>' +
+    '<div class="bc-bal" style="color:'+(isRef?'var(--pu)':ip?'var(--ok)':'var(--er)')+'">'+(isRef?'🟡 Refund ₹'+Math.abs(fb).toLocaleString('en-IN'):ip?'✅ PAID':'🔴 ₹'+fb.toLocaleString('en-IN')+' due')+'</div></div></div>';
+}
+
+// ── OPEN MODALS ───────────────────────────────────────────────
+function openB(b){curBill=b; el('bill-content').innerHTML=mkD(b); el('bill-modal').style.display='block';}
+function openR(r){curRet=r;  el('ret-content').innerHTML=mkR(r);  el('ret-modal').style.display='block';}
+
+// ── DISPATCH HTML ─────────────────────────────────────────────
+function mkD(b){
+  var ac='#C9A84C',bg='#0D0D0D', ip=b.status==='PAID'||b.balance<=0;
   var rows=(b.items||[]).map(function(it){
-    var miss=it.missing>0?'<span style="color:#f39c12;font-size:11px"> ⚠'+it.missing+' missing</span>':'';
-    return '<tr style="border-bottom:1px solid '+(isR?'#d5ede8':'#f0e8cc')+'">' +
-      '<td style="padding:9px 13px">'+it.name+miss+'</td>'+
-      '<td style="padding:9px;text-align:center">'+it.qty+'</td>'+
-      '<td style="padding:9px;text-align:center">₹'+it.price+'/day</td>'+
-      '<td style="padding:9px;text-align:center;color:#777">'+(isR?b.actualDays:b.days)+'d</td>'+
+    return '<tr style="border-bottom:1px solid #f0e8cc"><td style="padding:9px 13px">'+it.name+'</td>' +
+      '<td style="padding:9px;text-align:center">'+it.qty+'</td>' +
+      '<td style="padding:9px;text-align:center">₹'+it.price+'/'+(it.type==='per day'?'day':'mo')+'</td>' +
+      '<td style="padding:9px;text-align:center;color:#777">'+b.days+'d/'+b.months+'mo</td>' +
       '<td style="padding:9px 13px;text-align:right;font-weight:700">₹'+Number(it.amount).toLocaleString('en-IN')+'</td></tr>';
   }).join('');
-  var fb=isR?Number(b.finalBalance):null;
-  var totals=isR
-    ?'<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental</span><span>₹'+Number(b.totalRental).toLocaleString('en-IN')+'</span></div>'+
-     '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Prev Advance</span><span style="color:green">₹'+Number(b.prevAdvance).toLocaleString('en-IN')+'</span></div>'+
-     '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Add Payment</span><span style="color:green">₹'+Number(b.additionalPay).toLocaleString('en-IN')+'</span></div>'+
-     '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Final Balance</span>'+
-     '<span style="color:'+(fb<0?'#9b59b6':fb<=0?'green':'#c0392b')+'">'+(fb<0?'🟡 REFUND ₹'+Math.abs(fb).toLocaleString('en-IN'):fb<=0?'✅ FULLY PAID':'₹'+Number(fb).toLocaleString('en-IN'))+'</span></div>'
-    :'<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental</span><span>₹'+Number(b.total).toLocaleString('en-IN')+'</span></div>'+
-     '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Advance Paid</span><span style="color:green">₹'+Number(b.advance).toLocaleString('en-IN')+'</span></div>'+
-     '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Balance Due</span><span style="color:#c0392b">₹'+Number(b.balance).toLocaleString('en-IN')+'</span></div>';
-  return '<div style="font-family:Noto Sans,Arial,sans-serif;color:#111">'+
-    '<div style="background:'+bg+';padding:22px 26px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">'+
-      '<div><div style="color:'+ac+';font-size:19px;font-weight:700">GARUDA CONSTRUCTION SERVICE</div>'+
-      '<div style="color:#666;font-size:10px;letter-spacing:2px;margin-top:4px">GCS INVENTORY — '+ttl+'</div></div>'+
-      '<div style="text-align:right"><div style="color:'+ac+';font-weight:700;font-size:13px">'+no+'</div>'+
-      '<div style="color:#aaa;font-size:11px;margin-top:3px">'+b.date+'</div>'+
-      (isR?'<div style="color:#aaa;font-size:10px">Ref: '+b.originalBillNo+'</div>':'')+'</div></div>'+
-    '<div style="background:'+(isR?'#f0faf6':'#faf7ef')+';padding:14px 26px;display:grid;grid-template-columns:1fr 1fr;gap:10px;border-bottom:2px solid '+(isR?'#c8eadf':'#e8dfc0')+'">'+
-      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Customer</div><div style="font-weight:700;font-size:14px;margin-top:2px">'+b.customer+'</div></div>'+
-      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Contact</div><div style="font-weight:600;margin-top:2px">'+b.phone+'</div></div>'+
-      (isR
-        ?'<div><div style="color:#999;font-size:10px;text-transform:uppercase">OUT Date</div><div style="font-size:12px;margin-top:2px">'+fdt(b.outDate)+'</div></div>'+
-         '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Return Date</div><div style="font-size:12px;margin-top:2px">'+fdt(b.returnDate)+'<br><b style="color:'+ac+'">'+b.actualDays+'d / '+b.actualMonths+'mo</b></div></div>'
-        :'<div><div style="color:#999;font-size:10px;text-transform:uppercase">Site</div><div style="margin-top:2px">'+(b.address||'—')+'</div></div>'+
-         '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Period</div><div style="font-size:12px;margin-top:2px">'+fdt(b.outDate)+' → '+fdt(b.inDate)+'<br><b style="color:'+ac+'">'+b.days+'d / '+b.months+'mo</b></div></div>')+
-    '</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:'+ac+'">'+
-      '<th style="padding:9px 13px;text-align:left;color:#000">Product</th>'+
-      '<th style="padding:9px;text-align:center;color:#000">Qty</th>'+
-      '<th style="padding:9px;text-align:center;color:#000">Rate</th>'+
-      '<th style="padding:9px;text-align:center;color:#000">Days</th>'+
-      '<th style="padding:9px 13px;text-align:right;color:#000">Amount</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table>'+
-    '<div style="background:'+(isR?'#e8f5f0':'#f5efe0')+';padding:16px 26px">'+totals+'</div>'+
-    '<div style="background:'+bg+';padding:11px 26px;text-align:center;color:#555;font-size:11px;border-radius:0 0 10px 10px">Garuda Construction Service | karudakavivdm@gmail.com</div></div>';
+  return '<div style="font-family:\'Noto Sans\',Arial,sans-serif;color:#111">' +
+    '<div style="background:'+bg+';padding:22px 26px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><div style="color:'+ac+';font-size:19px;font-weight:700">GARUDA CONSTRUCTION SERVICE</div>' +
+      '<div style="color:#666;font-size:10px;letter-spacing:2px;margin-top:4px">DISPATCH BILL — '+(b.sheetType||'MAIN')+'</div></div>' +
+      '<div style="text-align:right"><div style="color:'+ac+';font-weight:700;font-size:13px">'+b.billNo+'</div>' +
+      '<div style="color:#aaa;font-size:11px;margin-top:3px">'+b.date+'</div></div></div>' +
+    '<div style="background:#faf7ef;padding:14px 26px;display:grid;grid-template-columns:1fr 1fr;gap:10px;border-bottom:2px solid #e8dfc0">' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Customer</div><div style="font-weight:700;font-size:14px;margin-top:2px">'+b.customer+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Contact</div><div style="font-weight:600;margin-top:2px">'+b.phone+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Site</div><div style="margin-top:2px">'+(b.address||'—')+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Period</div><div style="font-size:12px;margin-top:2px">'+fd(b.outDate)+' → '+fd(b.inDate)+'<br><b style="color:'+ac+'">'+b.days+'d / '+b.months+'mo</b></div></div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:'+ac+'">' +
+      '<th style="padding:9px 13px;text-align:left;color:#000">Product</th><th style="padding:9px;text-align:center;color:#000">Qty</th>' +
+      '<th style="padding:9px;text-align:center;color:#000">Rate</th><th style="padding:9px;text-align:center;color:#000">Duration</th>' +
+      '<th style="padding:9px 13px;text-align:right;color:#000">Amount</th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table>' +
+    '<div style="background:#f5efe0;padding:16px 26px">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental</span><span>₹'+Number(b.total).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Advance Paid</span><span style="color:green">₹'+Number(b.advance).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Balance Due</span>' +
+        '<span style="color:'+(ip?'green':'#c0392b')+'">'+(ip?'✅ FULLY PAID':'₹'+Number(b.balance).toLocaleString('en-IN'))+'</span></div>' +
+    '</div>' +
+    '<div style="background:'+bg+';padding:11px 26px;text-align:center;color:#555;font-size:11px;border-radius:0 0 10px 10px">' +
+      'Garuda Construction Service | karudakavivdm@gmail.com | Return all materials in good condition.</div></div>';
 }
 
-// ── PDF ────────────────────────────────────────────────────────
+// ── RETURN HTML ───────────────────────────────────────────────
+function mkR(r){
+  var ac='#1abc9c',bg='#0a1f16', fb=Number(r.finalBalance), isRef=fb<0, ip=r.status==='FULLY PAID'||fb<=0;
+  var rows=(r.items||[]).map(function(it){
+    return '<tr style="border-bottom:1px solid #d5ede8">' +
+      '<td style="padding:9px 13px">'+it.name+'</td>' +
+      '<td style="padding:9px;text-align:center;font-weight:700">'+it.qty+'</td></tr>';
+  }).join('');
+  var balSec = isRef
+    ? '<div style="background:#f0e8ff;border:2px solid #9b59b6;border-radius:8px;padding:14px;margin-top:12px;text-align:center">' +
+        '<div style="font-size:12px;color:#666;margin-bottom:4px">🟡 REFUND DUE TO CUSTOMER</div>' +
+        '<div style="font-size:26px;font-weight:700;color:#9b59b6">₹ '+Math.abs(fb).toLocaleString('en-IN')+'</div>' +
+        '<div style="font-size:11px;color:#888;margin-top:4px">Customer overpaid — please refund this amount</div></div>'
+    : ip
+      ? '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Final Balance</span><span style="color:green">✅ FULLY PAID</span></div>'
+      : '<div style="display:flex;justify-content:space-between;font-size:18px;font-weight:700;border-top:2px solid '+ac+';margin-top:8px;padding-top:10px"><span>Balance Due</span><span style="color:#c0392b">₹'+fb.toLocaleString('en-IN')+'</span></div>';
+  return '<div style="font-family:\'Noto Sans\',Arial,sans-serif;color:#111">' +
+    '<div style="background:'+bg+';padding:22px 26px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><div style="color:'+ac+';font-size:19px;font-weight:700">GARUDA CONSTRUCTION SERVICE</div>' +
+      '<div style="color:#666;font-size:10px;letter-spacing:2px;margin-top:4px">RETURN RECEIPT</div></div>' +
+      '<div style="text-align:right"><div style="color:'+ac+';font-weight:700;font-size:13px">'+r.returnBillNo+'</div>' +
+      '<div style="color:#aaa;font-size:11px;margin-top:3px">Ref: '+r.originalBillNo+'</div></div></div>' +
+    '<div style="background:#f0faf6;padding:14px 26px;display:grid;grid-template-columns:1fr 1fr;gap:10px;border-bottom:2px solid #c8eadf">' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Customer</div><div style="font-weight:700;font-size:14px;margin-top:2px">'+r.customer+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Contact</div><div style="font-weight:600;margin-top:2px">'+r.phone+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Return Date</div><div style="font-size:12px;margin-top:2px">'+fd(r.returnDate)+'</div></div>' +
+      '<div><div style="color:#999;font-size:10px;text-transform:uppercase">Actual Duration</div><div style="margin-top:2px"><b style="color:'+ac+'">'+r.actualDays+'d / '+r.actualMonths+'mo</b></div></div>' +
+      (r.notes?'<div style="grid-column:1/-1"><div style="color:#999;font-size:10px;text-transform:uppercase">Notes</div><div style="font-size:12px;margin-top:2px">'+r.notes+'</div></div>':'') +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:'+ac+'">' +
+      '<th style="padding:9px 13px;text-align:left;color:#000">Items Returned</th>' +
+      '<th style="padding:9px;text-align:center;color:#000">Qty</th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table>' +
+    '<div style="background:#e8f5f0;padding:16px 26px">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Total Rental (Recalculated)</span><span>₹'+Number(r.totalRental).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Previous Advance Paid</span><span style="color:green">₹'+Number(r.prevAdvance).toLocaleString('en-IN')+'</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px"><span style="color:#555">Additional Payment Now</span><span style="color:green">₹'+Number(r.additionalPay).toLocaleString('en-IN')+'</span></div>' +
+      balSec +
+    '</div>' +
+    '<div style="background:'+bg+';padding:11px 26px;text-align:center;color:#555;font-size:11px;border-radius:0 0 10px 10px">' +
+      'Garuda Construction Service | karudakavivdm@gmail.com</div></div>';
+}
+
+// ── PDF DISPATCH ──────────────────────────────────────────────
 function dlPDF(){
-  if(!curBill)return;
-  var b=curBill, isR=curMode==='return';
-  var ac=isR?[26,188,156]:[201,168,76];
-  var no=isR?b.returnBillNo:b.billNo;
+  if(!curBill)return; var b=curBill;
   var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
-  doc.setFillColor(10,10,10); doc.rect(0,0,210,297,'F');
-  doc.setTextColor.apply(doc,ac); doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.setFillColor(10,10,10);doc.rect(0,0,210,297,'F');
+  doc.setTextColor(201,168,76);doc.setFontSize(14);doc.setFont('helvetica','bold');
   doc.text('GARUDA CONSTRUCTION SERVICE',14,18);
-  doc.setFontSize(8); doc.setTextColor(100,100,100);
-  doc.text('GCS INVENTORY — '+(isR?'RETURN RECEIPT':'DISPATCH BILL'),14,25);
-  doc.setTextColor(140,140,140);
-  doc.text(no,145,16); doc.text(b.date,145,22);
-  if(isR) doc.text('Ref: '+b.originalBillNo,145,28);
-  doc.setDrawColor.apply(doc,ac); doc.line(14,31,196,31);
-  doc.setTextColor(195,195,195); doc.setFontSize(9); doc.setFont('helvetica','normal');
-  doc.text('Customer: '+(b.customer||''),14,39);
-  doc.text('Phone   : '+(b.phone||''),14,46);
-  if(isR){
-    doc.text('OUT     : '+fdt(b.outDate),14,53);
-    doc.text('Return  : '+fdt(b.returnDate),100,39);
-    doc.text('Actual  : '+(b.actualDays||0)+'d / '+(b.actualMonths||0)+'mo',100,46);
-  } else {
-    doc.text('Address : '+(b.address||'—').slice(0,35),14,53);
-    doc.text('OUT     : '+fdt(b.outDate),100,39);
-    doc.text('IN      : '+fdt(b.inDate),100,46);
-    doc.text('Duration: '+(b.days||0)+'d / '+(b.months||0)+'mo',100,53);
-  }
-  doc.line(14,58,196,58);
-  doc.setFillColor.apply(doc,ac); doc.rect(14,61,182,8,'F');
-  doc.setTextColor(0); doc.setFont('helvetica','bold'); doc.setFontSize(9);
-  doc.text('Product',16,67); doc.text('Qty',108,67); doc.text('Rate',126,67); doc.text('Days',151,67); doc.text('Amount',175,67);
-  var y=79;
-  doc.setFont('helvetica','normal'); doc.setTextColor(195,195,195); doc.setFontSize(8.5);
+  doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('DISPATCH BILL — '+(b.sheetType||'MAIN')+' INVENTORY',14,25);
+  doc.setTextColor(140,140,140);doc.text(b.billNo,145,16);doc.text(b.date,145,22);
+  doc.setDrawColor(201,168,76);doc.line(14,31,196,31);
+  doc.setTextColor(195,195,195);doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Customer : '+b.customer,14,39);doc.text('Phone    : '+b.phone,14,46);
+  doc.text('Address  : '+(b.address||'—').slice(0,35),14,53);
+  doc.text('OUT      : '+fd(b.outDate),100,39);doc.text('IN       : '+fd(b.inDate),100,46);
+  doc.text('Duration : '+b.days+'d / '+b.months+'mo',100,53);
+  doc.line(14,58,196,58);doc.setFillColor(201,168,76);doc.rect(14,61,182,8,'F');
+  doc.setTextColor(0);doc.setFont('helvetica','bold');doc.setFontSize(9);
+  doc.text('Product',16,67);doc.text('Qty',109,67);doc.text('Rate',127,67);doc.text('Duration',151,67);doc.text('Amount',175,67);
+  var y=79;doc.setFont('helvetica','normal');doc.setTextColor(195,195,195);doc.setFontSize(9);
   (b.items||[]).forEach(function(it){
-    var nm=it.name+(it.missing>0?' (⚠'+it.missing+' missing)':'');
-    doc.text(nm.slice(0,30),16,y);
-    doc.text(String(it.qty),110,y);
-    doc.text('Rs'+it.price+'/d',125,y);
-    doc.text(String(isR?b.actualDays:b.days)+'d',153,y);
-    doc.text('Rs'+Number(it.amount).toLocaleString('en-IN'),173,y);
-    y+=9;
-    if(y>270){doc.addPage();doc.setFillColor(10,10,10);doc.rect(0,0,210,297,'F');y=20;}
+    doc.text(it.name.slice(0,26),16,y);doc.text(String(it.qty),111,y);
+    doc.text('Rs'+it.price+'/'+(it.type==='per day'?'day':'mo'),126,y);
+    doc.text(b.days+'d/'+b.months+'mo',154,y);doc.text('Rs'+Number(it.amount).toLocaleString('en-IN'),173,y);y+=9;
   });
-  doc.setDrawColor.apply(doc,ac); doc.line(14,y+2,196,y+2); y+=11;
-  doc.setFont('helvetica','bold'); doc.setFontSize(10);
-  if(isR){
-    var fb=Number(b.finalBalance);
-    doc.setTextColor(195,195,195);
-    doc.text('Total Rental : Rs '+Number(b.totalRental).toLocaleString('en-IN'),120,y); y+=9;
-    doc.setTextColor(46,204,113);
-    doc.text('Prev Advance : Rs '+Number(b.prevAdvance).toLocaleString('en-IN'),120,y); y+=9;
-    doc.text('Add Payment  : Rs '+Number(b.additionalPay).toLocaleString('en-IN'),120,y); y+=9;
-    var fc=fb<0?[155,89,182]:fb<=0?[46,204,113]:[231,76,60];
-    doc.setTextColor.apply(doc,fc);
-    doc.text('Final Balance: '+(fb<0?'REFUND Rs'+Math.abs(fb).toLocaleString('en-IN'):fb<=0?'FULLY PAID':'Rs'+Number(fb).toLocaleString('en-IN')),120,y);
-  } else {
-    doc.setTextColor(195,195,195);
-    doc.text('Total Rental : Rs '+Number(b.total).toLocaleString('en-IN'),120,y); y+=9;
-    doc.setTextColor(46,204,113);
-    doc.text('Advance Paid : Rs '+Number(b.advance).toLocaleString('en-IN'),120,y); y+=9;
-    doc.setTextColor(231,76,60);
-    doc.text('Balance Due  : Rs '+Number(b.balance).toLocaleString('en-IN'),120,y);
-  }
-  y+=14;
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+  doc.setDrawColor(201,168,76);doc.line(14,y+2,196,y+2);y+=11;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(195,195,195);
+  doc.text('Total Rental : Rs '+Number(b.total).toLocaleString('en-IN'),120,y);y+=9;
+  doc.setTextColor(46,204,113);doc.text('Advance Paid : Rs '+Number(b.advance).toLocaleString('en-IN'),120,y);y+=9;
+  var ip=b.status==='PAID'||b.balance<=0;
+  doc.setTextColor(ip?46:231,ip?204:76,ip?113:60);
+  doc.text('Balance Due  : '+(ip?'FULLY PAID':'Rs '+Number(b.balance).toLocaleString('en-IN')),120,y);
+  y+=14;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
   doc.text('Thank you for choosing Garuda Construction Service.',14,y);
-  doc.save(no+'_'+(b.customer||'').replace(/\s+/g,'_')+'.pdf');
-  toast('✅ PDF saved!');
+  doc.save(b.billNo+'_'+b.customer.replace(/\s+/g,'_')+'.pdf');toast('✅ PDF downloaded');
 }
 
-// ── WHATSAPP ───────────────────────────────────────────────────
-function shareWA(){
-  if(!curBill)return;
-  var b=curBill, isR=curMode==='return';
-  var ph=(b.phone||'').replace(/\D/g,''), wa=ph.startsWith('91')?ph:'91'+ph;
-  var msg=isR
-    ?'📦 *RETURN RECEIPT — GCS*\n'+b.returnBillNo+' | Ref: '+b.originalBillNo+'\n'+
-      '👤 '+b.customer+' | 📞 '+b.phone+'\n\nReturned:\n'+
-      (b.items||[]).map(function(i){return '• '+i.name+': '+i.qty+(i.missing>0?' ⚠ '+i.missing+' missing':'');}).join('\n')+
-      '\n\n⏱ Actual: '+b.actualDays+' days\n'+(Number(b.finalBalance)<=0?'✅ FULLY PAID':'⚠️ Balance: ₹'+Number(b.finalBalance).toLocaleString('en-IN'))+
-      '\n\n🙏 Garuda Construction Service'
-    :'🏗️ *DISPATCH BILL — GCS*\n'+b.billNo+' | '+b.date+'\n'+
-      '👤 '+b.customer+' | 📞 '+b.phone+'\n📍 '+(b.address||'—')+'\n\nItems:\n'+
-      (b.items||[]).map(function(i){return '• '+i.name+': '+i.qty+' pcs = ₹'+Number(i.amount).toLocaleString('en-IN');}).join('\n')+
-      '\n\n⏱ '+b.days+' days\n💰 Total: ₹'+Number(b.total).toLocaleString('en-IN')+
-      '\n✅ Advance: ₹'+Number(b.advance).toLocaleString('en-IN')+
-      '\n⚠️ Balance: ₹'+Number(b.balance).toLocaleString('en-IN')+
-      '\n\n🙏 Garuda Construction Service';
+// ── PDF RETURN ────────────────────────────────────────────────
+function dlRetPDF(){
+  if(!curRet)return; var r=curRet, fb=Number(r.finalBalance);
+  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  doc.setFillColor(0,26,18);doc.rect(0,0,210,297,'F');
+  doc.setTextColor(26,188,156);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('GARUDA CONSTRUCTION SERVICE',14,18);
+  doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text('RETURN RECEIPT',14,25);
+  doc.setTextColor(140,140,140);doc.text(r.returnBillNo,145,16);doc.text('Ref: '+r.originalBillNo,145,22);
+  doc.setDrawColor(26,188,156);doc.line(14,31,196,31);
+  doc.setTextColor(195,195,195);doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text('Customer : '+r.customer,14,39);doc.text('Phone    : '+r.phone,14,46);
+  doc.text('Return   : '+fd(r.returnDate),100,39);doc.text('Actual   : '+r.actualDays+'d / '+r.actualMonths+'mo',100,46);
+  doc.line(14,58,196,58);doc.setFillColor(26,188,156);doc.rect(14,61,182,8,'F');
+  doc.setTextColor(0);doc.setFont('helvetica','bold');doc.setFontSize(9);
+  doc.text('Item Returned',16,67);doc.text('Qty',175,67);
+  var y=79;doc.setFont('helvetica','normal');doc.setTextColor(195,195,195);doc.setFontSize(9);
+  (r.items||[]).forEach(function(it){doc.text(it.name.slice(0,30),16,y);doc.text(String(it.qty),175,y);y+=9;});
+  doc.setDrawColor(26,188,156);doc.line(14,y+2,196,y+2);y+=11;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(195,195,195);
+  doc.text('Total Rental   : Rs '+Number(r.totalRental).toLocaleString('en-IN'),120,y);y+=9;
+  doc.setTextColor(46,204,113);
+  doc.text('Prev Advance   : Rs '+Number(r.prevAdvance).toLocaleString('en-IN'),120,y);y+=9;
+  doc.text('Add Payment    : Rs '+Number(r.additionalPay).toLocaleString('en-IN'),120,y);y+=9;
+  if(fb<0){doc.setTextColor(155,89,182);doc.text('REFUND TO CUST : Rs '+Math.abs(fb).toLocaleString('en-IN'),120,y);}
+  else{doc.setTextColor(fb<=0?46:231,fb<=0?204:76,fb<=0?113:60);doc.text('Final Balance  : '+(fb<=0?'FULLY PAID':'Rs '+fb.toLocaleString('en-IN')),120,y);}
+  y+=14;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+  doc.text('Thank you for choosing Garuda Construction Service.',14,y);
+  doc.save(r.returnBillNo+'_'+r.customer.replace(/\s+/g,'_')+'.pdf');toast('✅ Return PDF downloaded');
+}
+
+// ── WHATSAPP ──────────────────────────────────────────────────
+function waDisp(){
+  if(!curBill)return; var b=curBill, ph=(b.phone||'').replace(/\D/g,''), wa=ph.startsWith('91')?ph:'91'+ph;
+  var msg='🏗️ *DISPATCH BILL — GARUDA*\n'+b.billNo+' | '+b.date+'\n👤 '+b.customer+' | 📞 '+b.phone+'\n📍 '+(b.address||'—')+'\n\nItems:\n'+
+    (b.items||[]).map(function(i){return '• '+i.name+': '+i.qty+' pcs = ₹'+Number(i.amount).toLocaleString('en-IN');}).join('\n')+
+    '\n\n⏱ '+b.days+' days\n💰 Total: ₹'+Number(b.total).toLocaleString('en-IN')+
+    '\n✅ Advance: ₹'+Number(b.advance).toLocaleString('en-IN')+
+    '\n⚠️ Balance: ₹'+Number(b.balance).toLocaleString('en-IN')+'\n\n🙏 Garuda Construction Service';
+  window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
+}
+function waRet(){
+  if(!curRet)return; var r=curRet, fb=Number(r.finalBalance);
+  var ph=(r.phone||'').replace(/\D/g,''), wa=ph.startsWith('91')?ph:'91'+ph;
+  var msg='📦 *RETURN RECEIPT — GARUDA*\n'+r.returnBillNo+' | Ref: '+r.originalBillNo+'\n👤 '+r.customer+' | 📞 '+r.phone+
+    '\n\nReturned:\n'+(r.items||[]).map(function(i){return '• '+i.name+' × '+i.qty+' pcs';}).join('\n')+
+    '\n\n⏱ Actual: '+r.actualDays+' days\n💰 Total Rental: ₹'+Number(r.totalRental).toLocaleString('en-IN')+
+    '\n✅ Prev Advance: ₹'+Number(r.prevAdvance).toLocaleString('en-IN')+
+    '\n➕ Add Payment: ₹'+Number(r.additionalPay).toLocaleString('en-IN')+'\n'+
+    (fb<0?'\n🟡 REFUND TO YOU: ₹'+Math.abs(fb).toLocaleString('en-IN'):fb<=0?'\n✅ FULLY PAID':'\n🔴 Balance Due: ₹'+fb.toLocaleString('en-IN'))+
+    '\n\n🙏 Garuda Construction Service';
   window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(msg),'_blank');
 }
 
-// ── EXCEL DOWNLOAD / UPLOAD ────────────────────────────────────
-var _xlOk=false;
-function _xl(cb){if(_xlOk){cb();return;}var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=function(){_xlOk=true;cb();};document.head.appendChild(s);}
+// ── PENDING PANEL ─────────────────────────────────────────────
+function loadPending(){
+  el('pending-grid').innerHTML='<div class="loading">⟳ Loading pending balances…</div>';
+  el('pstats').style.display='none';
+  fetch(API+'?action=getPending').then(function(r){return r.json();}).then(function(d){
+    if(d.status!=='ok'){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+d.message+'</div>';return;}
+    var all=d.pending||[], refunds=d.refunds||[];
+    if(!all.length&&!refunds.length){el('pending-grid').innerHTML='<div class="empty">🎉 No pending balances! All cleared.</div>';return;}
+    var od=all.filter(function(p){return p.overdue;}).length;
+    el('pstats').style.display='grid';
+    el('st-cnt').textContent=all.length;
+    el('st-od').textContent=od;
+    el('st-tot').textContent='₹'+Number(d.total||0).toLocaleString('en-IN');
+    el('st-ret').textContent=refunds.length>0?refunds.length+' refunds':'₹0';
+    var html='';
+    var disp=all.filter(function(p){return p.type==='DISPATCH'||!p.type;});
+    if(disp.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px">📤 DISPATCH PENDING ('+disp.length+')</div>';
+      html+=disp.map(function(p){
+        return '<div class="pc'+(p.overdue?' overdue':'')+'">'+
+          (p.overdue?'<span class="od-tag">OVERDUE</span>':'')+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill">🧾 '+p.billNo+'</div>'+
+          '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>'+
+          '<div class="pc-due '+(p.overdue?'od':'ok')+'">'+(p.overdue?'🔴 Overdue: ':'📅 Due: ')+fd(p.inDate)+'</div>'+
+          '<button data-bn="'+p.billNo+'" data-cust="'+p.customer+'" data-ph="'+p.phone+'" data-bal="'+p.balance+'" onclick="bSettle(this)" '+
+            'style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Now</button>'+
+          '</div>';
+      }).join('');
+    }
+    var retPend=all.filter(function(p){return p.type==='RETURN';});
+    if(retPend.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:var(--teal);font-weight:700;margin-top:14px;margin-bottom:4px">📥 RETURN BALANCE DUE ('+retPend.length+')</div>';
+      html+=retPend.map(function(p){
+        return '<div class="pc overdue">'+
+          '<span class="od-tag" style="background:rgba(26,188,156,.2);border-color:var(--teal);color:var(--teal)">RETURN DUE</span>'+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill" style="color:var(--teal)">🧾 '+p.billNo+(p.refBill?'<br><span style="color:var(--mu);font-size:10px">Ref: '+p.refBill+'</span>':'')+'</div>'+
+          '<div class="pc-bal" style="color:var(--er)">₹ '+Number(p.balance).toLocaleString('en-IN')+'</div>'+
+          '<button data-bn="'+p.billNo+'" data-cust="'+p.customer+'" data-ph="'+p.phone+'" data-bal="'+p.balance+'" data-type="RETURN" onclick="bSettle(this)" '+
+            'style="margin-top:8px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:7px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">💳 Settle Now</button>'+
+          '</div>';
+      }).join('');
+    }
+    if(refunds.length){
+      html+='<div style="grid-column:1/-1;font-family:Rajdhani,sans-serif;font-size:13px;color:#9b59b6;font-weight:700;margin-top:14px;margin-bottom:4px">🟡 REFUND DUE TO CUSTOMER ('+refunds.length+')</div>';
+      html+=refunds.map(function(p){
+        return '<div class="pc" style="border-color:rgba(155,89,182,.4)">'+
+          '<div class="pc-name">👤 '+p.customer+'</div>'+
+          '<div class="pc-phone">📞 '+p.phone+'</div>'+
+          '<div class="pc-bill" style="color:#9b59b6">🧾 '+p.billNo+'</div>'+
+          '<div class="pc-bal" style="color:#9b59b6">🟡 Refund ₹ '+Math.abs(Number(p.balance)).toLocaleString('en-IN')+'</div>'+
+          '</div>';
+      }).join('');
+    }
+    el('pending-grid').innerHTML=html;
+  }).catch(function(e){el('pending-grid').innerHTML='<div class="empty" style="color:var(--er)">⚠ '+e.message+'</div>';});
+}
 
-function dlXL(){
-  toast('⟳ Preparing Excel…',6000);
+
+function qs(bn){switchTab('search');el('search-input').value=bn;searchBills();}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function fd(s){
+  if(!s)return '—';
+  try{return new Date(s).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  catch(e){return String(s);}
+}
+function toast(msg,ms){
+  ms=ms||3500; var t=el('toast-msg'); t.textContent=msg; t.classList.add('on');
+  setTimeout(function(){t.classList.remove('on');},ms);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// API PING
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+(function(){
+  fetch(API+'?action=ping')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var dot=document.getElementById('b-dot');
+      var txt=document.getElementById('b-txt');
+      if(d&&d.status==='ok'){if(dot)dot.style.background='#2ecc71';if(txt)txt.textContent='✅ Connected to Supabase';}
+      else{if(dot)dot.style.background='#e74c3c';if(txt)txt.textContent='⚠ API error';}
+    }).catch(function(){
+      var dot=document.getElementById('b-dot');var txt=document.getElementById('b-txt');
+      if(dot)dot.style.background='#e74c3c';
+      if(txt)txt.textContent='⚠ Cannot connect to API';
+    });
+})();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXCEL DOWNLOAD (ALL DATA)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _bXL=false;
+function bDlXL(){
+  toast('⟳ Preparing Excel…',5000);
   fetch(API+'?action=getExcel').then(function(r){return r.json();}).then(function(d){
     if(!d||d.status!=='ok'){toast('⚠ '+(d?d.message:'Error'));return;}
-    _xl(function(){
-      var wb=XLSX.utils.book_new();
-      // Sales Info with products
-      var sh=['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date','Products (Name x Qty @ Rate)'];
-      var sales=[sh].concat((d.sales||[]).map(function(s){
-        var itStr=(s.sale_items||[]).map(function(i){return i.product+'x'+i.qty+'pcs@Rs'+i.price+'/day=Rs'+(i.amount||0);}).join(' | ');
-        return [s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
-          s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):'',itStr];
-      }));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sales),'Sales_Info');
-      // Sale Items detail sheet
-      var sih=['Bill No','Customer','OUT Date','Product','Qty','Rate per day','Amount'];
-      var sitems=[sih];
-      (d.sales||[]).forEach(function(s){(s.sale_items||[]).forEach(function(i){sitems.push([s.bill_no,s.customer,s.out_date,i.product,i.qty,i.price,i.amount||0]);});});
-      if(sitems.length>1) XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sitems),'Sale Items');
-      // Returns with items + missing
-      var rh=['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes','Items Returned','Missing Items'];
-      var rets=[rh].concat((d.returns||[]).map(function(r){
-        var rStr=(r.return_items||[]).map(function(i){return i.product+'x'+i.qty;}).join(' | ');
-        return [r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||'',rStr,r.missing_summary||''];
-      }));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rets),'Returns');
-      // Return Items detail sheet
-      var rih=['Return Bill','Customer','Return Date','Product','Returned Qty'];
-      var ritems=[rih];
-      (d.returns||[]).forEach(function(r){(r.return_items||[]).forEach(function(i){ritems.push([r.return_bill_no,r.customer,r.return_date,i.product,i.qty]);});});
-      if(ritems.length>1) XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(ritems),'Return Items');
-      // Inventory Main
-      var ih=['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
-      var im=[ih].concat((d.invMain||[]).map(function(r,i){
-        return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
-      }));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(im),'Inventory main');
-      // Inventory Sub
-      var is2=[ih].concat((d.invSub||[]).map(function(r,i){
-        return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
-      }));
-      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(is2),'inventory sub');
-      XLSX.writeFile(wb,'GCS_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
-      toast('✅ Excel downloaded — 6 sheets with full product details!');
-    });
+    if(!_bXL){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=function(){_bXL=true;_bMakeXL(d);};
+      document.head.appendChild(s);
+    } else { _bMakeXL(d); }
   }).catch(function(e){toast('⚠ '+e.message);});
 }
-
-function ulXL(input){
-  if(!input.files.length)return;
-  el('xl-st').textContent='⟳ Reading…';
-  _xl(function(){
-    var reader=new FileReader();
-    reader.onload=function(ev){
-      try{
-        var wb=XLSX.read(ev.target.result,{type:'array'});
-        var invMain=[],invSub=[];
-        var ws1=wb.Sheets['Inventory main']||wb.Sheets['inventory main'];
-        if(ws1){var r1=XLSX.utils.sheet_to_json(ws1,{header:1});for(var i=1;i<r1.length;i++){var r=r1[i];if(r[1])invMain.push({product:String(r[1]),total_stock:Number(r[2])||0,in_qty:Number(r[3])||0,out_qty:Number(r[4])||0});}}
-        var ws2=wb.Sheets['inventory sub']||wb.Sheets['Inventory sub'];
-        if(ws2){var r2=XLSX.utils.sheet_to_json(ws2,{header:1});for(var j=1;j<r2.length;j++){var rr=r2[j];if(rr[1])invSub.push({product:String(rr[1]),total_stock:Number(rr[2])||0,in_qty:Number(rr[3])||0,out_qty:Number(rr[4])||0});}}
-        if(!invMain.length&&!invSub.length){toast('⚠ No inventory sheets found');return;}
-        fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'uploadXL',invMain:invMain,invSub:invSub})})
-          .then(function(r){return r.json();}).then(function(d){
-            if(d&&d.status==='ok'){el('xl-st').textContent='✅ Synced!';toast('✅ Inventory synced!');loadStock();}
-            else{el('xl-st').textContent='⚠ Error';toast('⚠ '+(d?d.message:'Error'));}
-          });
-      }catch(ex){el('xl-st').textContent='⚠ Error';toast('⚠ '+ex.message);}
-    };
-    reader.readAsArrayBuffer(input.files[0]);
-  });
+function _bMakeXL(d){
+  var wb=XLSX.utils.book_new();
+  var sh=['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Total','Advance','Balance','Status','Date'];
+  var sr=[sh].concat((d.sales||[]).map(function(s){return[s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.total,s.advance,s.balance,s.status,s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):''];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sr),'Sales_Info');
+  var rh=['Return Bill','Orig Bill','Customer','Phone','Return Date','Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes'];
+  var rr=[rh].concat((d.returns||[]).map(function(r){return[r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||''];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rr),'Returns');
+  var ih=['Product','Total Stock','IN Qty','OUT Qty','Available'];
+  var im=[ih].concat((d.invMain||[]).map(function(r){return[r.product,r.total_stock,r.in_qty,r.out_qty,(r.total_stock||0)-(r.out_qty||0)+(r.in_qty||0)];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(im),'Inventory main');
+  var is=[ih].concat((d.invSub||[]).map(function(r){return[r.product,r.total_stock,r.in_qty,r.out_qty,(r.total_stock||0)-(r.out_qty||0)+(r.in_qty||0)];}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(is),'inventory sub');
+  XLSX.writeFile(wb,'GCS_All_Data_'+new Date().toLocaleDateString('en-IN').replace(/[/]/g,'-')+'.xlsx');
+  toast('✅ Excel downloaded — all 4 sheets!');
 }
 
-// ── TOAST ──────────────────────────────────────────────────────
-function toast(msg,ms){
-  var t=el('gcs-toast'); t.textContent=msg; t.classList.add('on');
-  setTimeout(function(){t.classList.remove('on');},ms||3500);
-}
-
-document.addEventListener('click',function(e){
-  if(!e.target.closest('.ac-wrap')) el('r-ac').style.display='none';
-});
 </script>
 </body>
 </html>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SETTLE PAYMENT — bill.html
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Settle modal HTML — inject once
+(function(){
+  var modal = document.createElement('div');
+  modal.id = 'settle-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:none;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML =
+    '<div style="background:#181818;border:1px solid var(--teal);border-radius:14px;padding:28px;width:100%;max-width:440px;font-family:Noto Sans,sans-serif">' +
+      '<div style="font-family:Rajdhani,sans-serif;font-size:18px;font-weight:700;color:var(--teal);margin-bottom:16px">💳 Settle Payment</div>' +
+      '<div id="sm-info" style="background:#001a12;border:1px solid #0a3a20;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px"></div>' +
+      '<div style="margin-bottom:12px">' +
+        '<label style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">Payment Amount (Rs)</label>' +
+        '<input id="sm-amt" type="number" min="0" placeholder="Enter amount" ' +
+          'style="margin-top:5px;width:100%;background:#202020;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:11px 13px;font-size:15px;outline:none;font-family:inherit">' +
+      '</div>' +
+      '<div style="margin-bottom:16px">' +
+        '<label style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px">Notes (optional)</label>' +
+        '<input id="sm-notes" placeholder="Payment notes..." ' +
+          'style="margin-top:5px;width:100%;background:#202020;border:1px solid #0a3a20;border-radius:7px;color:var(--tx);padding:10px 13px;font-size:13px;outline:none;font-family:inherit">' +
+      '</div>' +
+      '<div id="sm-result" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:7px;font-size:13px;font-weight:700;text-align:center"></div>' +
+      '<div style="display:flex;gap:10px">' +
+        '<button onclick="smClose()" style="flex:1;padding:11px;border-radius:8px;background:rgba(231,76,60,.15);border:1px solid var(--er);color:var(--er);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✖ Close</button>' +
+        '<button onclick="smSubmit()" style="flex:2;padding:11px;border-radius:8px;background:var(--teal);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✅ Confirm Settlement</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+})();
+
+var _smBillNo = null;
+var _smType   = null;
+
+function bSettle(btn) {
+  var billNo = btn.getAttribute('data-bn');
+  var cust   = btn.getAttribute('data-cust');
+  var phone  = btn.getAttribute('data-ph');
+  var bal    = Number(btn.getAttribute('data-bal')) || 0;
+  _smType    = btn.getAttribute('data-type') || 'DISPATCH';
+  _smBillNo  = billNo;
+
+  document.getElementById('sm-info').innerHTML =
+    '<div style="color:var(--teal);font-weight:700;font-size:14px;margin-bottom:6px">🧾 ' + billNo + '</div>' +
+    '👤 ' + cust + ' &nbsp; 📞 ' + phone + '<br>' +
+    '<span style="color:var(--er);font-weight:700;font-size:16px;margin-top:4px;display:block">🔴 Pending Balance: ₹' + bal.toLocaleString('en-IN') + '</span>';
+
+  document.getElementById('sm-amt').value = bal;
+  document.getElementById('sm-notes').value = '';
+  document.getElementById('sm-result').style.display = 'none';
+
+  var modal = document.getElementById('settle-modal');
+  modal.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('sm-amt').focus(); }, 100);
+}
+
+function smClose() {
+  document.getElementById('settle-modal').style.display = 'none';
+  _smBillNo = null;
+}
+
+function smSubmit() {
+  if (!_smBillNo) return;
+  var amt   = parseFloat(document.getElementById('sm-amt').value) || 0;
+  var notes = document.getElementById('sm-notes').value.trim();
+  if (amt <= 0) { alert('Enter payment amount'); return; }
+
+  var btn = document.querySelector('#settle-modal button:last-child');
+  btn.textContent = '⟳ Processing…';
+  btn.disabled = true;
+
+  fetch(API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action: 'settlePayment', billNo: _smBillNo, payAmount: amt, notes: notes, type: _smType})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    btn.textContent = '✅ Confirm Settlement';
+    btn.disabled = false;
+    var res = document.getElementById('sm-result');
+    res.style.display = 'block';
+    if (d && d.status === 'ok') {
+      var paid = Number(d.newBalance) <= 0;
+      res.style.background = paid ? 'rgba(46,204,113,.15)' : 'rgba(243,156,18,.15)';
+      res.style.color      = paid ? 'var(--ok)' : 'var(--wn)';
+      res.textContent      = paid ? '✅ FULLY PAID! Payment cleared.' : '⚠ Partial — Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
+      setTimeout(function(){
+        smClose();
+        loadPending(); // refresh panel
+      }, 2000);
+    } else {
+      res.style.background = 'rgba(231,76,60,.15)';
+      res.style.color      = 'var(--er)';
+      res.textContent      = '⚠ Error: ' + (d ? d.message : 'Unknown error');
+    }
+  }).catch(function(e){
+    btn.textContent = '✅ Confirm Settlement';
+    btn.disabled = false;
+    var res = document.getElementById('sm-result');
+    res.style.display = 'block';
+    res.style.background = 'rgba(231,76,60,.15)';
+    res.style.color = 'var(--er)';
+    res.textContent = '⚠ Network error: ' + e.message;
+  });
+}
+
+// Close modal on outside click
+document.getElementById('settle-modal').addEventListener('click', function(e){
+  if (e.target === this) smClose();
+});
+</script>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MISSING MATERIALS TAB
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Cache returns for missing tab
+var _missCache = [];
+
+function loadMissing(){
+  var grid = document.getElementById('missing-grid');
+  grid.innerHTML = '<div class="loading">⟳ Loading return data…</div>';
+  fetch(API+'?action=getReturns&q=')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || d.status !== 'ok'){
+        grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ ' + (d?d.message:'Error') + '</div>';
+        return;
+      }
+      // Only show returns that have missing items OR pending balance
+      var rets = (d.returns||[]).filter(function(r){
+        return (r.missingItems && r.missingItems.length > 0) || Number(r.finalBalance) > 0;
+      });
+      _missCache = d.returns || [];
+
+      if(!rets.length){
+        grid.innerHTML = '<div class="empty">🎉 No missing materials! All items fully returned and paid.</div>';
+        return;
+      }
+
+      grid.innerHTML = rets.map(function(r, ri){
+        var missItems = r.missingItems || [];
+        var fb = Number(r.finalBalance);
+
+        // Missing items table
+        var missHtml = '';
+        if(missItems.length){
+          missHtml = '<div style="margin-top:12px">'+
+            '<div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⚠ Missing Items:</div>'+
+            '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+            '<tr style="background:#1a1200"><th style="padding:7px 10px;text-align:left;color:var(--wn)">Product</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--mu)">Dispatched</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--ok)">Returned</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--er)">Missing</th>'+
+            '<th style="padding:7px;text-align:center;color:var(--teal)">Restore Qty</th></tr>'+
+            missItems.map(function(i, ii){
+              return '<tr style="border-bottom:1px solid #2a1a00">'+
+                '<td style="padding:7px 10px">'+i.name+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--mu)">'+i.dispatched+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--ok)">'+i.returned+'</td>'+
+                '<td style="padding:7px;text-align:center;color:var(--er);font-weight:700">⚠ '+i.missing+'</td>'+
+                '<td style="padding:7px;text-align:center">'+
+                  '<input type="number" min="0" max="'+i.missing+'" value="'+i.missing+'" id="rest-'+ri+'-'+ii+'" '+
+                  'style="width:65px;text-align:center;background:#1a1200;border:1px solid #3a2800;border-radius:4px;color:var(--tx);padding:4px;font-family:inherit;font-size:12px">'+
+                '</td></tr>';
+            }).join('')+
+            '</table>'+
+            '<button onclick="doRestore('+ri+')" style="margin-top:10px;padding:8px 18px;background:var(--ok);color:#000;border:none;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">✅ Restore to Inventory</button>'+
+            '<input placeholder="Notes (optional)" id="rest-notes-'+ri+'" style="margin-top:8px;width:100%;background:#1a1200;border:1px solid #2a1a00;border-radius:6px;color:var(--tx);padding:8px 12px;font-size:12px;font-family:inherit;outline:none">'+
+            '</div>';
+        }
+
+        return '<div class="pc" style="border-color:rgba(243,156,18,.4);margin-bottom:16px" id="miss-card-'+ri+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'+
+            '<div>'+
+              '<div class="pc-name">👤 '+r.customer+'</div>'+
+              '<div class="pc-phone">📞 '+r.phone+'</div>'+
+              '<div class="pc-bill" style="color:var(--teal)">🧾 '+r.returnBillNo+'</div>'+
+              '<div style="font-size:11px;color:var(--mu)">Ref: '+r.originalBillNo+'</div>'+
+            '</div>'+
+            '<div style="text-align:right;display:flex;flex-direction:column;gap:5px">'+
+              (missItems.length ? '<span style="background:rgba(231,76,60,.15);border:1px solid var(--er);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--er);font-weight:700">⚠ '+missItems.length+' item(s) missing</span>' : '')+
+              (fb > 0 ? '<span style="background:rgba(243,156,18,.15);border:1px solid var(--wn);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--wn);font-weight:700">💰 ₹'+fb.toLocaleString('en-IN')+' due</span>' : '')+
+            '</div>'+
+          '</div>'+
+          '<div style="margin-top:8px;font-size:11px;color:var(--mu)">⏱ Returned: '+fd(r.returnDate)+' | Actual: '+r.actualDays+'d / '+r.actualMonths+'mo</div>'+
+          missHtml+
+          (fb > 0
+            ? '<button data-bn="'+r.returnBillNo+'" data-cust="'+r.customer+'" data-ph="'+r.phone+'" data-bal="'+fb+'" data-type="RETURN" onclick="bSettle(this)" '+
+              'style="margin-top:10px;width:100%;background:var(--teal);color:#000;border:none;border-radius:6px;padding:8px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">'+
+              '💳 Settle Balance ₹'+fb.toLocaleString('en-IN')+'</button>'
+            : '')+
+          '</div>';
+      }).join('');
+    }).catch(function(e){
+      grid.innerHTML = '<div class="empty" style="color:var(--er)">⚠ Network error: ' + e.message + '</div>';
+    });
+}
+
+function doRestore(ri){
+  var r = _missCache.filter(function(x){ return (x.missingItems||[]).length > 0 || Number(x.finalBalance) > 0; })[ri];
+  if(!r) return;
+  var missItems = r.missingItems || [];
+  var items = [];
+  missItems.forEach(function(m, ii){
+    var inp = document.getElementById('rest-'+ri+'-'+ii);
+    var qty = parseInt(inp ? inp.value : 0) || 0;
+    if(qty > 0){
+      items.push({name: m.name, qty: qty, group: m.group||'MAIN'});
+    }
+  });
+  if(!items.length){ toast('⚠ Enter restore qty for at least one item'); return; }
+  var notes = (document.getElementById('rest-notes-'+ri)||{}).value||'';
+  fetch(API, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'restoreMissing', returnBillNo: r.returnBillNo, items: items, notes: notes})
+  }).then(function(res){ return res.json(); }).then(function(d){
+    if(d && d.status==='ok'){
+      toast('✅ Items restored to inventory!');
+      var card = document.getElementById('miss-card-'+ri);
+      if(card) card.style.opacity='0.5';
+      setTimeout(loadMissing, 1500);
+    } else { toast('⚠ '+(d?d.message:'Error')); }
+  }).catch(function(e){ toast('⚠ '+e.message); });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXCEL DOWNLOAD — All 4 sheets
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+var _bxl = false;
+function bDlXL(){
+  toast('⟳ Preparing Excel…', 5000);
+  fetch(API+'?action=getExcel').then(function(r){ return r.json(); }).then(function(d){
+    if(!d||d.status!=='ok'){ toast('⚠ '+(d?d.message:'Error')); return; }
+    if(!_bxl){
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=function(){ _bxl=true; _bMakeXL(d); };
+      document.head.appendChild(s);
+    } else { _bMakeXL(d); }
+  }).catch(function(e){ toast('⚠ '+e.message); });
+}
+
+function _bMakeXL(d){
+  var wb = XLSX.utils.book_new();
+
+  // SALES INFO — with product details
+  var sh = ['Bill No','Customer','Phone','Address','Type','OUT Date','IN Date','Days','Months','Total','Advance','Balance','Status','Date','Products (Name×Qty×Rate×Amount)'];
+  var salesRows = [];
+  (d.sales||[]).forEach(function(s){
+    var itemStr = (s.sale_items||[]).map(function(i){ return i.product+'×'+i.qty+'pcs@₹'+i.price+'/day=₹'+(i.amount||0); }).join(' | ');
+    salesRows.push([s.bill_no,s.customer,s.phone,s.address||'',s.sheet_type,s.out_date,s.in_date,s.days,s.months,s.total,s.advance,s.balance,s.status,
+      s.created_at?new Date(s.created_at).toLocaleDateString('en-IN'):'', itemStr]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([sh].concat(salesRows)), 'Sales_Info');
+
+  // SALE ITEMS DETAIL — separate sheet
+  var sih = ['Bill No','Customer','Phone','OUT Date','Product','Qty','Rate/day','Amount'];
+  var sItemRows = [];
+  (d.sales||[]).forEach(function(s){
+    (s.sale_items||[]).forEach(function(i){
+      sItemRows.push([s.bill_no,s.customer,s.phone,s.out_date,i.product,i.qty,i.price,i.amount||0]);
+    });
+  });
+  if(sItemRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([sih].concat(sItemRows)), 'Sale Items');
+
+  // RETURNS — with product details + missing
+  var rh = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Actual Days','Total Rental','Prev Adv','Add Pay','Final Bal','Status','Notes','Items Returned','Missing Items'];
+  var retRows = [];
+  (d.returns||[]).forEach(function(r){
+    var retStr = (r.return_items||[]).map(function(i){ return i.product+'×'+i.qty; }).join(' | ');
+    retRows.push([r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,r.actual_days,r.total_rental,r.prev_advance,r.additional_pay,r.final_balance,r.status,r.notes||'',retStr,r.missing_summary||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([rh].concat(retRows)), 'Returns');
+
+  // RETURN ITEMS DETAIL — separate sheet
+  var rih = ['Return Bill','Orig Bill','Customer','Phone','Return Date','Product','Returned Qty'];
+  var rItemRows = [];
+  (d.returns||[]).forEach(function(r){
+    (r.return_items||[]).forEach(function(i){
+      rItemRows.push([r.return_bill_no,r.original_bill_no,r.customer,r.phone,r.return_date,i.product,i.qty]);
+    });
+  });
+  if(rItemRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([rih].concat(rItemRows)), 'Return Items');
+
+  // INVENTORY MAIN
+  var ih = ['S.No','Product','Total Stock Qty','IN Qty','OUT Qty','Available Qty'];
+  var im = [ih].concat((d.invMain||[]).map(function(r,i){
+    return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(im), 'Inventory main');
+
+  // INVENTORY SUB
+  var is2 = [ih].concat((d.invSub||[]).map(function(r,i){
+    return [i+1,r.product,Number(r.total_stock)||0,Number(r.in_qty)||0,Number(r.out_qty)||0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)];
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(is2), 'inventory sub');
+
+  XLSX.writeFile(wb, 'GCS_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
+  toast('✅ Excel downloaded — 6 sheets with full product details!');
+}
+</script>
