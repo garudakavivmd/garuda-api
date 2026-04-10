@@ -350,9 +350,11 @@ function loadStock(){
         return xName===sName || xName.indexOf(sName)!==-1 || sName.indexOf(xName)!==-1;
       });
       if(p){
-        p.stock=Number(s.available)||0;
-        p.out=Number(s.out)||0;
-        p.total=Number(s.total)||0;
+        p.stock    = Number(s.available)||0;
+        p.in_qty   = Number(s.in_qty)||0;
+        p.out_qty  = Number(s.out_qty)||0;
+        p.out      = Number(s.out)||0;
+        p.total    = Number(s.total)||0;
       }
     });
     buildD(); // rebuild dispatch table with fresh stock
@@ -368,8 +370,9 @@ function loadStock(){
       return '<div class="sc">'+
         '<div class="sc-name">'+s.name+'</div>'+
         '<div class="sc-avail '+cls+'">'+s.available+' <span style="font-size:12px;font-weight:400">pcs</span></div>'+
-        '<div class="sc-meta">Total: '+s.total+' pcs</div>'+
-        (s.out>0?'<div class="sc-out">⬆ Out: '+s.out+' pcs</div>':'')+
+        '<div class="sc-meta" style="margin-top:4px">Total: '+s.total+' pcs</div>'+
+        '<div style="font-size:11px;color:var(--er);margin-top:2px">⬆ OUT: '+s.out_qty+' pcs</div>'+
+        '<div style="font-size:11px;color:var(--ok);margin-top:1px">⬇ IN: '+s.in_qty+' pcs</div>'+
         '</div>';
     }).join('');
     el('stock-upd').textContent=new Date().toLocaleTimeString('en-IN');
@@ -515,20 +518,26 @@ function buildDObj(){
   var c=calcD();
   var items=ALL_PRODUCTS.filter(function(p){return (dQty[p.id]||0)>0;}).map(function(p){
     var price=parseFloat(el('dp-'+p.id)?el('dp-'+p.id).value:0)||0;
-    return {name:p.name,qty:dQty[p.id],price:price,type:'per day',amount:dQty[p.id]*price*c.days,group:p.group};
+    return {name:p.name,qty:dQty[p.id],price:price,type:'per day',
+            amount:dQty[p.id]*price*c.days,group:p.group};
   });
+  // Determine sheetType: MIXED if both groups, else MAIN or SUB
+  var hasMain=items.some(function(i){return i.group==='MAIN';});
+  var hasSub =items.some(function(i){return i.group==='SUB';});
+  var sType  =hasMain&&hasSub?'MAIN':hasSub?'SUB':'MAIN';
   return {billNo:newBN(),date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
     customer:val('d-name'),phone:val('d-phone'),address:val('d-addr'),
     outDate:el('d-out').value,inDate:el('d-in').value,days:c.days,months:c.months,
     items:items,total:c.total,advance:c.adv,balance:c.bal,
-    sheetType:'MAIN',action:'addOrder'};
+    sheetType:sType,action:'addOrder'};
 }
 function buildRObj(){
   var c=calcR();
   var items=ALL_PRODUCTS.filter(function(p){return (rQty[p.id]||0)>0;}).map(function(p){
     var price=parseFloat(el('rp-'+p.id)?el('rp-'+p.id).value:0)||0;
     var miss=Math.max(0,(rDispatched[p.id]||0)-rQty[p.id]);
-    return {name:p.name,qty:rQty[p.id],price:price,type:'per day',amount:rQty[p.id]*price*c.days,missing:miss,group:p.group};
+    return {name:p.name,qty:rQty[p.id],price:price,type:'per day',
+            amount:rQty[p.id]*price*c.days,missing:miss,group:p.group};
   });
   return {returnBillNo:newBN(),originalBillNo:val('r-bill'),
     date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
