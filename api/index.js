@@ -1,6 +1,6 @@
 // ================================================================
-// GARUDA CONSTRUCTION SERVICE — Vercel API v2
-// No Google. No blocking. Free forever.
+// GARUDA CONSTRUCTION SERVICE — Vercel API v3
+// Fixed: SUB inventory sync using JS-side name matching
 // ================================================================
 
 const SUPABASE_URL    = process.env.SUPABASE_URL;
@@ -12,16 +12,42 @@ async function sb(path, method='GET', body=null) {
   const opts = {
     method,
     headers: {
-      'apikey': SUPABASE_SECRET,
+      'apikey':        SUPABASE_SECRET,
       'Authorization': `Bearer ${SUPABASE_SECRET}`,
-      'Content-Type': 'application/json',
-      'Prefer': method==='POST' ? 'return=representation' : (method==='DELETE' ? 'return=minimal' : '')
+      'Content-Type':  'application/json',
+      'Prefer': method==='POST'?'return=representation':method==='DELETE'?'return=minimal':''
     }
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, opts);
-  if (!r.ok) { const e = await r.text(); throw new Error(`DB error: ${e}`); }
+  if (!r.ok) { const e = await r.text(); throw new Error(`DB ${method} /${path}: ${e}`); }
   return r.status===204 ? [] : r.json();
+}
+
+// KEY FIX: fetch ALL rows and match name in JS — no URL encoding issues with / and -
+async function findInvRow(tbl, productName) {
+  const rows = await sb(`${tbl}?select=id,product,in_qty,out_qty,total_stock&order=id`);
+  const pLow = (productName||'').trim().toLowerCase();
+  return rows.find(r => (r.product||'').trim().toLowerCase() === pLow) || null;
+}
+
+async function updateInv(productName, group, field, delta) {
+  const tables = group==='SUB'
+    ? ['inventory_sub','inventory_main']
+    : ['inventory_main','inventory_sub'];
+  for (const tbl of tables) {
+    const row = await findInvRow(tbl, productName);
+    if (row) {
+      const newVal = Math.max(0, (Number(row[field])||0) + delta);
+      await sb(`${tbl}?id=eq.${row.id}`, 'PATCH', {[field]: newVal});
+      return;
+    }
+  }
+  // Auto-create if not found
+  const tbl2 = group==='SUB' ? 'inventory_sub' : 'inventory_main';
+  const nr   = {product:productName.trim(), total_stock:0, in_qty:0, out_qty:0};
+  nr[field]  = Math.max(0, delta);
+  await sb(tbl2, 'POST', nr);
 }
 
 async function telegram(msg) {
@@ -30,11 +56,10 @@ async function telegram(msg) {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({chat_id:TG_CHAT, text:msg, parse_mode:'Markdown'})
     });
-  } catch(e) { console.error('TG:',e); }
+  } catch(e) {}
 }
 
 function fmt(v) { return Number(v||0).toLocaleString('en-IN'); }
-
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin','*');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
@@ -49,380 +74,154 @@ export default async function handler(req, res) {
   try {
     const action = req.method==='GET' ? req.query.action : (req.body?.action||req.query.action);
     if (req.method==='GET') {
-      if (action==='ping')          return ok(res,{message:'Garuda API v2 ✅'});
-      if (action==='getStock')      return await getStock(req,res);
-      if (action==='getBills')      return await getBills(req,res);
-      if (action==='getReturns')    return await getReturns(req,res);
-      if (action==='getPending')    return await getPending(req,res);
-      if (action==='getExcel')      return await getExcel(req,res);
-      if (action==='getBillById')   return await getBillById(req,res);
-      return ok(res,{message:'Garuda API v2 ✅'});
+      if (action==='ping')        return ok(res,{message:'Garuda API v3 ✅'});
+      if (action==='getStock')    return await getStock(req,res);
+      if (action==='getBills')    return await getBills(req,res);
+      if (action==='getBillById') return await getBillById(req,res);
+      if (action==='getReturns')  return await getReturns(req,res);
+      if (action==='getPending')  return await getPending(req,res);
+      if (action==='getExcel')    return await getExcel(req,res);
+      return ok(res,{message:'Garuda API v3 ✅'});
     }
     if (req.method==='POST') {
-      const data = req.body;
-      if (data.action==='addOrder')       return await addOrder(data,res);
-      if (data.action==='addReturn')      return await addReturn(data,res);
-      if (data.action==='settlePayment')  return await settlePayment(data,res);
-      if (data.action==='uploadXL')       return await uploadXL(data,res);
-      if (data.action==='restoreMissing')  return await restoreMissing(data,res);
-      return err(res,'Unknown action: '+data.action);
+      const d = req.body;
+      if (d.action==='addOrder')       return await addOrder(d,res);
+      if (d.action==='addReturn')      return await addReturn(d,res);
+      if (d.action==='settlePayment')  return await settlePayment(d,res);
+      if (d.action==='uploadXL')       return await uploadXL(d,res);
+      if (d.action==='restoreMissing') return await restoreMissing(d,res);
+      return err(res,'Unknown: '+d.action);
     }
     return err(res,'Method not allowed');
-  } catch(e) { console.error('Handler:',e); return err(res,e.message); }
+  } catch(e) { console.error(e); return err(res,e.message); }
 }
 
-// ── GET STOCK (BUG FIXED: available = total + in - out) ───────
 async function getStock(req,res) {
-  const tbl = req.query.sheet==='SUB' ? 'inventory_sub' : 'inventory_main';
+  const tbl  = req.query.sheet==='SUB' ? 'inventory_sub' : 'inventory_main';
   const rows = await sb(`${tbl}?select=*&order=id`);
-  const stock = rows.map(r => ({
+  return ok(res,{stock: rows.map(r=>({
     name:      r.product,
     total:     Number(r.total_stock)||0,
     in_qty:    Number(r.in_qty)||0,
     out_qty:   Number(r.out_qty)||0,
-    // BUG FIX: available = total + in - out (net available after accounting for returns)
-    available: (Number(r.total_stock)||0) - (Number(r.out_qty)||0) + (Number(r.in_qty)||0),
-    // Only show OUT that hasn't been returned yet
-    out:       Math.max(0, (Number(r.out_qty)||0) - (Number(r.in_qty)||0))
-  }));
-  return ok(res,{stock});
+    available: Math.max(0,(Number(r.total_stock)||0)-(Number(r.out_qty)||0)+(Number(r.in_qty)||0)),
+    out:       Math.max(0,(Number(r.out_qty)||0)-(Number(r.in_qty)||0))
+  }))});
 }
 
-// ── GET BILLS ─────────────────────────────────────────────────
 async function getBills(req,res) {
-  const q = (req.query.q||'').trim().toLowerCase();
-  let filter = 'select=*,sale_items(*)&order=id.desc';
-  if (q) filter += `&or=(bill_no.ilike.*${q}*,customer.ilike.*${q}*,phone.ilike.*${q}*)`;
-  const rows = await sb(`sales?${filter}`);
-  const bills = rows.map(r => ({
-    billNo:r.bill_no, customer:r.customer, phone:r.phone,
-    address:r.address, outDate:r.out_date, inDate:r.in_date,
-    days:r.days, months:r.months, advance:r.advance,
-    balance:r.balance, total:r.total, status:r.status,
-    date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '',
-    sheetType:r.sheet_type,
-    items:(r.sale_items||[]).map(i=>({name:i.product,qty:i.qty,price:i.price,type:i.rent_type,amount:i.amount}))
-  }));
-  return ok(res,{bills,count:bills.length});
+  const q = (req.query.q||'').trim();
+  let f = 'select=*,sale_items(*)&order=id.desc';
+  if (q) f += `&or=(bill_no.ilike.*${q}*,customer.ilike.*${q}*,phone.ilike.*${q}*)`;
+  const rows = await sb(`sales?${f}`);
+  return ok(res,{bills: rows.map(mapBill), count:rows.length});
 }
 
-// ── GET BILL BY ID (for return auto-fill) ────────────────────
 async function getBillById(req,res) {
   const id = (req.query.id||'').trim();
-  if (!id) return err(res,'Bill ID required');
-  const filter = `sales?select=*,sale_items(*)&or=(bill_no.ilike.*${id}*,customer.ilike.*${id}*,phone.ilike.*${id}*)&order=id.desc`;
-  const rows = await sb(filter);
-  const bills = rows.map(r=>({
-    billNo:r.bill_no, customer:r.customer, phone:r.phone,
-    address:r.address, outDate:r.out_date, inDate:r.in_date,
-    days:r.days, months:r.months, advance:r.advance,
-    balance:r.balance, total:r.total, status:r.status,
-    sheetType:r.sheet_type,
-    date: r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '',
-    items:(r.sale_items||[]).map(i=>({name:i.product,qty:i.qty,price:i.price,type:i.rent_type,amount:i.amount}))
-  }));
-  return ok(res,{bills,count:bills.length});
+  if (!id) return err(res,'ID required');
+  const rows = await sb(`sales?select=*,sale_items(*)&or=(bill_no.ilike.*${id}*,customer.ilike.*${id}*,phone.ilike.*${id}*)&order=id.desc`);
+  return ok(res,{bills: rows.map(mapBill), count:rows.length});
 }
 
-// ── GET RETURNS ───────────────────────────────────────────────
-async function getReturns(req,res) {
-  const q = (req.query.q||'').trim().toLowerCase();
-  let filter = 'select=*,return_items(*)&order=id.desc';
-  if (q) filter += `&or=(return_bill_no.ilike.*${q}*,original_bill_no.ilike.*${q}*,customer.ilike.*${q}*,phone.ilike.*${q}*)`;
-  const rows = await sb(`returns?${filter}`);
+function mapBill(r) {
+  return {
+    billNo:r.bill_no, customer:r.customer, phone:r.phone, address:r.address,
+    outDate:r.out_date, inDate:r.in_date, days:r.days, months:r.months,
+    advance:r.advance, balance:r.balance, total:r.total, status:r.status,
+    sheetType:r.sheet_type,
+    date:r.created_at?new Date(r.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'',
+    items:(r.sale_items||[]).map(i=>({name:i.product,qty:i.qty,price:i.price,type:i.rent_type,amount:i.amount,group:i.group_type||'MAIN'}))
+  };
+}
 
-  // For each return, look up original dispatch to compute missing items
+async function getReturns(req,res) {
+  const q = (req.query.q||'').trim();
+  let f = 'select=*,return_items(*)&order=id.desc';
+  if (q) f += `&or=(return_bill_no.ilike.*${q}*,original_bill_no.ilike.*${q}*,customer.ilike.*${q}*,phone.ilike.*${q}*)`;
+  const rows = await sb(`returns?${f}`);
+
   const returns = await Promise.all(rows.map(async r => {
-    const retItems = (r.return_items||[]).map(i=>({name:i.product, qty:Number(i.qty)||0, group:i.group_type||'MAIN'}));
-    // Get original dispatch items to compute missing
-    let missing = [];
+    const retItems = (r.return_items||[]).map(i=>({name:i.product,qty:Number(i.qty)||0,group:i.group_type||'MAIN'}));
+    let missingItems = [];
     try {
-      const origSales = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
-      if (origSales.length && origSales[0].sale_items) {
-        origSales[0].sale_items.forEach(si => {
-          const ret = retItems.find(ri => ri.name.toLowerCase()===si.product.toLowerCase());
-          const retQty = ret ? ret.qty : 0;
-          const missQty = Math.max(0, (Number(si.qty)||0) - retQty);
-          missing.push({
-            name:       si.product,
-            dispatched: Number(si.qty)||0,
-            returned:   retQty,
-            missing:    missQty,
-            price:      Number(si.price)||0,
-            group:      si.group_type || 'MAIN'
-          });
+      const orig = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
+      if (orig.length && orig[0].sale_items) {
+        orig[0].sale_items.forEach(si=>{
+          const ret    = retItems.find(ri=>ri.name.trim().toLowerCase()===si.product.trim().toLowerCase());
+          const retQty = ret?ret.qty:0;
+          const miss   = Math.max(0,(Number(si.qty)||0)-retQty);
+          if (miss>0) missingItems.push({name:si.product,dispatched:Number(si.qty)||0,returned:retQty,missing:miss,price:Number(si.price)||0,group:si.group_type||'MAIN'});
         });
       }
-    } catch(e) { /* ignore */ }
-
+    } catch(e) {}
     return {
       returnBillNo:r.return_bill_no, originalBillNo:r.original_bill_no,
       customer:r.customer, phone:r.phone, returnDate:r.return_date,
       actualDays:r.actual_days, actualMonths:r.actual_months,
       totalRental:r.total_rental, prevAdvance:r.prev_advance,
       additionalPay:r.additional_pay, finalBalance:r.final_balance,
-      status:r.status, notes:r.notes,
-      items: retItems,
-      missingItems: missing.filter(m => m.missing > 0),
-      allItems: missing
+      status:r.status, notes:r.notes, items:retItems, missingItems
     };
   }));
   return ok(res,{returns,count:returns.length});
 }
 
-// ── GET PENDING — includes both dispatch pending + return balance due ──
 async function getPending(req,res) {
   const now = new Date();
-
-  // 1. Dispatch bills with pending balance
-  const salesRows = await sb(`sales?select=bill_no,customer,phone,balance,status,in_date,out_date,total,advance&balance=gt.0&status=neq.PAID&order=balance.desc`);
-  const dispatchPending = salesRows.map(r=>({
-    billNo:    r.bill_no,
-    customer:  r.customer,
-    phone:     r.phone,
-    balance:   Number(r.balance)||0,
-    inDate:    r.in_date,
-    outDate:   r.out_date,
-    total:     r.total,
-    advance:   r.advance,
-    type:      'DISPATCH',
-    overdue:   r.in_date && new Date(r.in_date) < now
-  }));
-
-  // 2. Return bills with balance due (customer still owes)
-  const retRows = await sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status,return_date&final_balance=gt.0&status=neq.FULLY PAID&order=final_balance.desc`);
-  const returnPending = retRows.map(r=>({
-    billNo:    r.return_bill_no,
-    refBill:   r.original_bill_no,
-    customer:  r.customer,
-    phone:     r.phone,
-    balance:   Number(r.final_balance)||0,
-    inDate:    r.return_date,
-    type:      'RETURN',
-    overdue:   true
-  }));
-
-  // 3. Return bills where customer is owed a REFUND (negative balance)
-  const refundRows = await sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status&final_balance=lt.0&order=final_balance`);
-  const refunds = refundRows.map(r=>({
-    billNo:    r.return_bill_no,
-    refBill:   r.original_bill_no,
-    customer:  r.customer,
-    phone:     r.phone,
-    balance:   Number(r.final_balance)||0,
-    type:      'REFUND'
-  }));
-
-  const allPending = [...dispatchPending, ...returnPending];
-  const total = allPending.reduce((s,x)=>s+Number(x.balance),0);
-  return ok(res,{pending:allPending, refunds, total, count:allPending.length});
+  const [sRows,rRows,refRows] = await Promise.all([
+    sb(`sales?select=bill_no,customer,phone,balance,status,in_date,out_date,total,advance&balance=gt.0&status=neq.PAID&order=balance.desc`),
+    sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status,return_date&final_balance=gt.0&order=final_balance.desc`),
+    sb(`returns?select=return_bill_no,original_bill_no,customer,phone,final_balance,status&final_balance=lt.0&order=final_balance`)
+  ]);
+  const disp = sRows.map(r=>({billNo:r.bill_no,customer:r.customer,phone:r.phone,balance:Number(r.balance)||0,inDate:r.in_date,outDate:r.out_date,total:r.total,advance:r.advance,type:'DISPATCH',overdue:r.in_date&&new Date(r.in_date)<now}));
+  const ret  = rRows.map(r=>({billNo:r.return_bill_no,refBill:r.original_bill_no,customer:r.customer,phone:r.phone,balance:Number(r.final_balance)||0,inDate:r.return_date,type:'RETURN',overdue:true}));
+  const ref  = refRows.map(r=>({billNo:r.return_bill_no,refBill:r.original_bill_no,customer:r.customer,phone:r.phone,balance:Number(r.final_balance)||0,type:'REFUND'}));
+  const all  = [...disp,...ret];
+  return ok(res,{pending:all,refunds:ref,total:all.reduce((s,x)=>s+x.balance,0),count:all.length});
 }
 
-// ── GET EXCEL DATA ────────────────────────────────────────────
 async function getExcel(req,res) {
-  const [salesRaw,returnsRaw,invMain,invSub] = await Promise.all([
+  const [sRaw,rRaw,invM,invS] = await Promise.all([
     sb('sales?select=*,sale_items(*)&order=id.desc'),
     sb('returns?select=*,return_items(*)&order=id.desc'),
     sb('inventory_main?select=*&order=id'),
     sb('inventory_sub?select=*&order=id')
   ]);
-  // Include items in sales
-  const sales = salesRaw.map(s => ({
-    ...s,
-    items_summary: (s.sale_items||[]).map(i=>`${i.product}×${i.qty}`).join(', '),
-    sale_items: s.sale_items
-  }));
-  // Include items in returns + compute missing
-  const returns = await Promise.all(returnsRaw.map(async r => {
-    const retItems = (r.return_items||[]);
-    let missing = [];
-    try {
-      const orig = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
-      if (orig.length && orig[0].sale_items) {
-        orig[0].sale_items.forEach(si => {
-          const ret = retItems.find(ri => ri.product.toLowerCase()===si.product.toLowerCase());
-          const retQty = ret ? Number(ret.qty)||0 : 0;
-          const missQty = Math.max(0, (Number(si.qty)||0) - retQty);
-          if (missQty > 0) missing.push(`${si.product}×${missQty}`);
-        });
-      }
-    } catch(e) {}
-    return {
-      ...r,
-      items_summary: retItems.map(i=>`${i.product}×${i.qty}`).join(', '),
-      missing_summary: missing.join(', '),
-      return_items: retItems
-    };
-  }));
-  return ok(res,{sales,returns,invMain,invSub});
+  return ok(res,{
+    sales:   sRaw.map(s=>({...s,sale_items:s.sale_items||[],items_summary:(s.sale_items||[]).map(i=>`${i.product}×${i.qty}`).join(', ')})),
+    returns: rRaw.map(r=>({...r,return_items:r.return_items||[],items_summary:(r.return_items||[]).map(i=>`${i.product}×${i.qty}`).join(', ')})),
+    invMain: invM,
+    invSub:  invS
+  });
 }
 
-// ── RESTORE MISSING ITEMS (customer returns missing materials) ──
-async function restoreMissing(data, res) {
-  try {
-    const { returnBillNo, items, notes } = data;
-    // Update inventory IN for each restored item using robust helper
-    for (const item of (items||[])) {
-      await updateInv(item.name, item.group||'MAIN', 'in_qty', Number(item.qty)||0);
-    }
-    // Update the return record notes
-    if (returnBillNo) {
-      const ret = await sb(`returns?return_bill_no=ilike.${encodeURIComponent(returnBillNo)}&select=id,notes`);
-      if (ret.length) {
-        const addNote = `[Restored: ${(items||[]).map(i=>i.name+'×'+i.qty).join(', ')}${notes?' — '+notes:''}]`;
-        await sb(`returns?id=eq.${ret[0].id}`, 'PATCH', {
-          notes: [(ret[0].notes||''), addNote].filter(Boolean).join(' '),
-          status: 'FULLY RETURNED'
-        });
-      }
-    }
-    await telegram(
-      `✅ *Missing Items Restored — ${returnBillNo||''}*\n` +
-      `📦 Items: ${(items||[]).map(i=>i.name+' ×'+i.qty).join(', ')}\n` +
-      (notes ? `📝 ${notes}` : '')
-    );
-    return ok(res, { message: 'Missing items restored to inventory ✅' });
-  } catch(e) { return err(res, e.message); }
-}
-
-// ── UPLOAD XL DATA — REPLACE mode (not add) ──────────────────
-async function uploadXL(data,res) {
-  try {
-    const {invMain, invSub} = data;
-
-    // ── Helper: DELETE all rows then re-insert fresh ──────────
-    async function replaceTable(tbl, rows) {
-      if (!rows || !rows.length) return;
-      // Delete ALL existing rows in table
-      await sb(`${tbl}?id=gt.0`, 'DELETE');
-      // Insert fresh rows one by one
-      for (const row of rows) {
-        if (!row.product) continue;
-        await sb(tbl, 'POST', {
-          product:     String(row.product).trim(),
-          total_stock: Number(row.total_stock) || 0,
-          in_qty:      Number(row.in_qty)      || 0,
-          out_qty:     Number(row.out_qty)      || 0
-        });
-      }
-    }
-
-    if (invMain && invMain.length) await replaceTable('inventory_main', invMain);
-    if (invSub  && invSub.length)  await replaceTable('inventory_sub',  invSub);
-
-    return ok(res, {message: 'Inventory replaced from Excel ✅'});
-  } catch(e) { return err(res, e.message); }
-}
-
-// ── SETTLE PAYMENT — handles both DISPATCH and RETURN bills ──
-async function settlePayment(data,res) {
-  try {
-    const {billNo, payAmount, notes, type} = data;
-    const paid   = Number(payAmount)||0;
-    let oldBal   = 0;
-    let newBal   = 0;
-    let customer = '';
-    let phone    = '';
-
-    if (type === 'RETURN') {
-      // Settle return balance due
-      const ret = await sb(`returns?return_bill_no=eq.${encodeURIComponent(billNo)}&select=id,final_balance,customer,phone`);
-      if (!ret.length) return err(res,'Return bill not found: '+billNo);
-      const r = ret[0];
-      customer = r.customer; phone = r.phone;
-      oldBal   = Number(r.final_balance)||0;
-      newBal   = Math.max(0, oldBal - paid);
-      await sb(`returns?id=eq.${r.id}`, 'PATCH', {
-        final_balance: newBal,
-        status:        newBal<=0 ? 'FULLY PAID' : 'BALANCE DUE'
-      });
-    } else {
-      // Settle dispatch balance
-      const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(billNo)}&select=id,balance,customer,phone`);
-      if (!sale.length) return err(res,'Bill not found: '+billNo);
-      const s  = sale[0];
-      customer = s.customer; phone = s.phone;
-      oldBal   = Number(s.balance)||0;
-      newBal   = Math.max(0, oldBal - paid);
-      await sb(`sales?id=eq.${s.id}`, 'PATCH', {
-        balance: newBal,
-        status:  newBal<=0 ? 'PAID' : 'PENDING'
-      });
-    }
-
-    await telegram(
-      `💳 *Payment Settled — ${billNo}*\n` +
-      `👤 ${customer}  📞 ${phone}\n` +
-      `💰 Paid: ₹${fmt(paid)} | Old Balance: ₹${fmt(oldBal)}\n` +
-      (newBal<=0 ? `✅ *FULLY PAID*` : `🔴 Remaining: ₹${fmt(newBal)}`) +
-      (notes ? `\n📝 ${notes}` : '')
-    );
-    return ok(res,{billNo, oldBalance:oldBal, paid, newBalance:newBal, status:newBal<=0?'PAID':'PENDING'});
-  } catch(e) { return err(res,e.message); }
-}
-
-// ── INVENTORY HELPER — finds product in correct table and updates ─
-async function updateInv(productName, group, field, delta) {
-  // Try the expected table first, then fallback
-  const tables = group==='SUB'
-    ? ['inventory_sub','inventory_main']
-    : ['inventory_main','inventory_sub'];
-
-  for (const tbl of tables) {
-    // Use ilike for case-insensitive match
-    const rows = await sb(`${tbl}?product=ilike.${encodeURIComponent(productName)}&select=id,${field}&limit=1`);
-    if (rows && rows.length) {
-      const newVal = Math.max(0, (Number(rows[0][field])||0) + delta);
-      await sb(`${tbl}?id=eq.${rows[0].id}`, 'PATCH', {[field]: newVal});
-      return true; // success
-    }
-  }
-  // If not found in either table, create in expected table
-  const createTbl = group==='SUB' ? 'inventory_sub' : 'inventory_main';
-  const newRow = {product: productName, total_stock: 0, in_qty: 0, out_qty: 0};
-  newRow[field] = Math.max(0, delta);
-  await sb(createTbl, 'POST', newRow);
-  return false;
-}
-
-// ── ADD ORDER ─────────────────────────────────────────────────
 async function addOrder(data,res) {
   const items = data.items||[];
   await sb('sales','POST',{
-    bill_no:data.billNo, customer:data.customer, phone:data.phone,
-    address:data.address||'', sheet_type:data.sheetType||'MAIN',
-    out_date:data.outDate||'', in_date:data.inDate||'',
+    bill_no:data.billNo, customer:data.customer, phone:data.phone, address:data.address||'',
+    sheet_type:data.sheetType||'MAIN', out_date:data.outDate||'', in_date:data.inDate||'',
     days:Number(data.days)||0, months:Number(data.months)||0,
-    advance:Number(data.advance)||0, balance:Number(data.balance)||0,
-    total:Number(data.total)||0,
+    advance:Number(data.advance)||0, balance:Number(data.balance)||0, total:Number(data.total)||0,
     status:Number(data.balance)>0?'PENDING':'PAID'
   });
   for (const it of items) {
     await sb('sale_items','POST',{
-      bill_no:data.billNo, product:it.name,
-      qty:Number(it.qty)||0, price:Number(it.price)||0,
-      rent_type:it.type||'per day', amount:Number(it.amount)||0,
-      group_type:it.group||'MAIN'
+      bill_no:data.billNo, product:it.name, qty:Number(it.qty)||0,
+      price:Number(it.price)||0, rent_type:it.type||'per day',
+      amount:Number(it.amount)||0, group_type:it.group||'MAIN'
     });
   }
-  // Update inventory for each item — uses helper that tries both tables
   for (const it of items) {
     await updateInv(it.name, it.group||'MAIN', 'out_qty', Number(it.qty)||0);
   }
-  await telegram(
-    `✅ *New Order — ${data.billNo}*\n📅 ${new Date().toLocaleDateString('en-IN')}\n━━━━━━━━━━━━━━━━\n`+
-    `👤 *Customer:* ${data.customer}\n📞 *Phone:* ${data.phone}\n📍 *Address:* ${data.address||'—'}\n━━━━━━━━━━━━━━━━\n`+
-    `📦 *Items:*\n${items.map(x=>`  • ${x.name} × ${x.qty} pcs = ₹${fmt(x.amount)}`).join('\n')}\n━━━━━━━━━━━━━━━━\n`+
-    `🕐 OUT: ${data.outDate||'—'}\n🕐 IN: ${data.inDate||'—'}\n⏱ ${data.days} days / ${data.months} month(s)\n━━━━━━━━━━━━━━━━\n`+
-    `💰 Total: ₹${fmt(data.total)}\n✅ Advance: ₹${fmt(data.advance)}\n🔴 Balance: ₹${fmt(data.balance)}`
-  );
+  await telegram(`✅ *New Order — ${data.billNo}*\n👤 ${data.customer} | 📞 ${data.phone}\n📦 ${items.map(x=>`${x.name}×${x.qty}`).join(', ')}\n💰 Total: ₹${fmt(data.total)} | Balance: ₹${fmt(data.balance)}`);
   return ok(res,{billNo:data.billNo});
 }
 
-// ── ADD RETURN ────────────────────────────────────────────────
 async function addReturn(data,res) {
   const items = data.items||[];
-  const fb = Number(data.finalBalance)||0;
+  const fb    = Number(data.finalBalance)||0;
   await sb('returns','POST',{
     return_bill_no:data.returnBillNo, original_bill_no:data.originalBillNo,
     customer:data.customer, phone:data.phone,
@@ -435,22 +234,78 @@ async function addReturn(data,res) {
   for (const it of items) {
     await sb('return_items','POST',{return_bill_no:data.returnBillNo,product:it.name,qty:Number(it.qty)||0,group_type:it.group||'MAIN'});
   }
-  // Update inventory for each returned item — uses helper that tries both tables
   for (const it of items) {
     await updateInv(it.name, it.group||'MAIN', 'in_qty', Number(it.qty)||0);
   }
-  const sale = await sb(`sales?bill_no=eq.${encodeURIComponent(data.originalBillNo)}&select=id,balance`);
-  if (sale.length) {
-    const newBal = Math.max(0,(Number(sale[0].balance)||0)-(Number(data.additionalPay)||0));
-    await sb(`sales?id=eq.${sale[0].id}`,'PATCH',{balance:newBal,status:newBal<=0?'PAID':'PENDING'});
-  }
-  await telegram(
-    `📦 *Return — ${data.returnBillNo}*\n📅 ${new Date().toLocaleDateString('en-IN')}\n━━━━━━━━━━━━━━━━\n`+
-    `👤 *Customer:* ${data.customer}\n📞 *Phone:* ${data.phone}\n🔗 *Ref Bill:* ${data.originalBillNo}\n━━━━━━━━━━━━━━━━\n`+
-    `📦 *Items Returned:*\n${items.map(x=>`  • ${x.name} × ${x.qty} pcs`).join('\n')}\n━━━━━━━━━━━━━━━━\n`+
-    `⏱ Actual: ${data.actualDays} days / ${data.actualMonths} month(s)\n`+
-    `💰 Total Rental: ₹${fmt(data.totalRental)}\n✅ Prev Advance: ₹${fmt(data.prevAdvance)}\n➕ Add Payment: ₹${fmt(data.additionalPay)}\n━━━━━━━━━━━━━━━━\n`+
-    (fb<0?`🟡 *REFUND TO CUSTOMER: ₹${fmt(Math.abs(fb))}*`:fb===0?`🟢 *FULLY PAID*`:`🔴 *Balance Due: ₹${fmt(fb)}*`)
-  );
+  try {
+    const sr = await sb(`sales?bill_no=eq.${data.originalBillNo}&select=id,balance`);
+    if (sr.length) {
+      const nb = Math.max(0,(Number(sr[0].balance)||0)-(Number(data.additionalPay)||0));
+      await sb(`sales?id=eq.${sr[0].id}`,'PATCH',{balance:nb,status:nb<=0?'PAID':'PENDING'});
+    }
+  } catch(e) {}
+  await telegram(`📦 *Return — ${data.returnBillNo}*\n👤 ${data.customer} | Ref: ${data.originalBillNo}\n📦 ${items.map(x=>`${x.name}×${x.qty}`).join(', ')}\n${fb<=0?'✅ FULLY PAID':'🔴 Balance: ₹'+fmt(fb)}`);
   return ok(res,{returnBillNo:data.returnBillNo});
+}
+
+async function settlePayment(data,res) {
+  try {
+    const {billNo,payAmount,notes,type} = data;
+    const paid = Number(payAmount)||0;
+    let oldBal=0,newBal=0,customer='',phone='';
+    if (type==='RETURN') {
+      const rows = await sb(`returns?return_bill_no=eq.${billNo}&select=id,final_balance,customer,phone`);
+      if (!rows.length) return err(res,'Return bill not found: '+billNo);
+      customer=rows[0].customer; phone=rows[0].phone;
+      oldBal=Number(rows[0].final_balance)||0; newBal=Math.max(0,oldBal-paid);
+      await sb(`returns?id=eq.${rows[0].id}`,'PATCH',{final_balance:newBal,status:newBal<=0?'FULLY PAID':'BALANCE DUE'});
+    } else {
+      const rows = await sb(`sales?bill_no=eq.${billNo}&select=id,balance,customer,phone`);
+      if (!rows.length) return err(res,'Bill not found: '+billNo);
+      customer=rows[0].customer; phone=rows[0].phone;
+      oldBal=Number(rows[0].balance)||0; newBal=Math.max(0,oldBal-paid);
+      await sb(`sales?id=eq.${rows[0].id}`,'PATCH',{balance:newBal,status:newBal<=0?'PAID':'PENDING'});
+    }
+    await telegram(`💳 *Settled — ${billNo}*\n👤 ${customer} | Paid: ₹${fmt(paid)}\n${newBal<=0?'✅ FULLY PAID':'🔴 Remaining: ₹'+fmt(newBal)}`);
+    return ok(res,{billNo,oldBalance:oldBal,paid,newBalance:newBal,status:newBal<=0?'PAID':'PENDING'});
+  } catch(e) { return err(res,e.message); }
+}
+
+async function restoreMissing(data,res) {
+  try {
+    const {returnBillNo,items,notes} = data;
+    for (const item of (items||[])) {
+      await updateInv(item.name, item.group||'MAIN', 'in_qty', Number(item.qty)||0);
+    }
+    if (returnBillNo) {
+      const rows = await sb(`returns?return_bill_no=eq.${returnBillNo}&select=id,notes`);
+      if (rows.length) {
+        const note = `[Restored: ${(items||[]).map(i=>i.name+'×'+i.qty).join(', ')}${notes?' — '+notes:''}]`;
+        await sb(`returns?id=eq.${rows[0].id}`,'PATCH',{notes:[(rows[0].notes||''),note].filter(Boolean).join(' '),status:'FULLY RETURNED'});
+      }
+    }
+    await telegram(`✅ *Restored — ${returnBillNo||''}*\n📦 ${(items||[]).map(i=>i.name+'×'+i.qty).join(', ')}`);
+    return ok(res,{message:'Restored ✅'});
+  } catch(e) { return err(res,e.message); }
+}
+
+async function uploadXL(data,res) {
+  try {
+    const {invMain,invSub} = data;
+    async function syncTable(tbl, rows) {
+      if (!rows||!rows.length) return;
+      const existing = await sb(`${tbl}?select=id,product&order=id`);
+      for (const row of rows) {
+        if (!row.product) continue;
+        const pLow = row.product.trim().toLowerCase();
+        const found = existing.find(e=>(e.product||'').trim().toLowerCase()===pLow);
+        const payload = {product:row.product.trim(),total_stock:Number(row.total_stock)||0,in_qty:Number(row.in_qty)||0,out_qty:Number(row.out_qty)||0};
+        if (found) await sb(`${tbl}?id=eq.${found.id}`,'PATCH',payload);
+        else        await sb(tbl,'POST',payload);
+      }
+    }
+    if (invMain&&invMain.length) await syncTable('inventory_main',invMain);
+    if (invSub&&invSub.length)   await syncTable('inventory_sub',invSub);
+    return ok(res,{message:'Inventory synced ✅'});
+  } catch(e) { return err(res,e.message); }
 }
