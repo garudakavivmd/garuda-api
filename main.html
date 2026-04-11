@@ -89,7 +89,7 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">📋 Bills</a>
+    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">📋 Bills</a>
   </nav>
 </header>
 
@@ -371,8 +371,8 @@ function loadStock(){
         '<div class="sc-name">'+s.name+'</div>'+
         '<div class="sc-avail '+cls+'">'+s.available+' <span style="font-size:12px;font-weight:400">pcs</span></div>'+
         '<div class="sc-meta" style="margin-top:4px">Total: '+s.total+' pcs</div>'+
-        '<div style="font-size:11px;color:var(--er);margin-top:2px">⬆ OUT: '+s.out_qty+' pcs</div>'+
-        '<div style="font-size:11px;color:var(--ok);margin-top:1px">⬇ IN: '+s.in_qty+' pcs</div>'+
+        (s.out>0?'<div style="font-size:11px;color:var(--er);margin-top:2px">⬆ Out: '+s.out+' pcs</div>':'')+
+        (s.in_qty>0?'<div style="font-size:11px;color:var(--ok);margin-top:1px">⬇ In: '+s.in_qty+' pcs</div>':'')+
         '</div>';
     }).join('');
     el('stock-upd').textContent=new Date().toLocaleTimeString('en-IN');
