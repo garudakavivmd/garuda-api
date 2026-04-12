@@ -89,7 +89,7 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">📋 Bills</a>
+    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">📋 Bills</a>
   </nav>
 </header>
 
@@ -289,7 +289,19 @@ function ru(v){return '₹ '+Number(v||0).toLocaleString('en-IN');}
 function td(){return new Date().toISOString().split('T')[0];}
 function nowDT(){var n=new Date();n.setMinutes(n.getMinutes()-n.getTimezoneOffset());return n.toISOString().slice(0,16);}
 function newBN(){return 'GCS-'+Date.now().toString().slice(-6);}
-function fdt(s){if(!s)return '—';try{return new Date(s).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return s;}}
+function fdt(s){
+  if(!s)return '—';
+  try{
+    var dt=new Date(s);
+    var dd=String(dt.getDate()).padStart(2,'0');
+    var mm=String(dt.getMonth()+1).padStart(2,'0');
+    var yy=dt.getFullYear();
+    var hh=String(dt.getHours()).padStart(2,'0');
+    var mn=String(dt.getMinutes()).padStart(2,'0');
+    if(hh==='00'&&mn==='00') return dd+'-'+mm+'-'+yy;
+    return dd+'-'+mm+'-'+yy+' '+hh+':'+mn;
+  }catch(e){return String(s);}
+}
 function dur(out,inn){
   if(!out||!inn)return {days:0,months:0,ok:false};
   var ms=new Date(inn)-new Date(out);
@@ -525,7 +537,7 @@ function buildDObj(){
   var hasMain=items.some(function(i){return i.group==='MAIN';});
   var hasSub =items.some(function(i){return i.group==='SUB';});
   var sType  =hasMain&&hasSub?'MAIN':hasSub?'SUB':'MAIN';
-  return {billNo:newBN(),date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
+  return {billNo:newBN(),date:(function(){var n=new Date();return String(n.getDate()).padStart(2,'0')+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+n.getFullYear();})(),
     customer:val('d-name'),phone:val('d-phone'),address:val('d-addr'),
     outDate:el('d-out').value,inDate:el('d-in').value,days:c.days,months:c.months,
     items:items,total:c.total,advance:c.adv,balance:c.bal,
@@ -540,7 +552,7 @@ function buildRObj(){
             amount:rQty[p.id]*price*c.days,missing:miss,group:p.group};
   });
   return {returnBillNo:newBN(),originalBillNo:val('r-bill'),
-    date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
+    date:(function(){var n=new Date();return String(n.getDate()).padStart(2,'0')+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+n.getFullYear();})(),
     customer:val('r-name'),phone:val('r-phone'),
     outDate:el('r-out').value,returnDate:el('r-back').value,
     actualDays:c.days,actualMonths:c.months,
