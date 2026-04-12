@@ -314,7 +314,7 @@ function rBC(b){
   var is=(b.items||[]).map(function(i){return i.name+' ×'+i.qty;}).join(', ');
   return '<div class="bill-card" onclick=\'openB('+JSON.stringify(b)+')\'>' +
     '<div class="bc-top"><div><div class="bc-billno">'+b.billNo+'</div><span class="b-type">'+(b.sheetType||'MAIN')+'</span></div>' +
-    '<div style="text-align:right"><div class="bc-date">'+b.date+'</div><span class="badge '+(ip?'b-ok':'b-er')+'">'+(ip?'✅ PAID':'⚠ PENDING')+'</span></div></div>' +
+    '<div style="text-align:right"><div class="bc-date">'+fmtDate(b.date)+'</div><span class="badge '+(ip?'b-ok':'b-er')+'">'+(ip?'✅ PAID':'⚠ PENDING')+'</span></div></div>' +
     '<div class="bc-name">👤 '+b.customer+'</div>' +
     '<div class="bc-phone">📞 '+b.phone+(b.address?' | 📍 '+b.address:'')+'</div>' +
     '<div class="bc-items">📦 '+(is||'—')+'</div>' +
@@ -576,8 +576,26 @@ function qs(bn){switchTab('search');el('search-input').value=bn;searchBills();}
 // ── HELPERS ───────────────────────────────────────────────────
 function fd(s){
   if(!s)return '—';
-  try{return new Date(s).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-  catch(e){return String(s);}
+  try{
+    var dt=new Date(s);
+    var dd=String(dt.getDate()).padStart(2,'0');
+    var mm=String(dt.getMonth()+1).padStart(2,'0');
+    var yy=dt.getFullYear();
+    var hh=String(dt.getHours()).padStart(2,'0');
+    var mn=String(dt.getMinutes()).padStart(2,'0');
+    // If time is midnight (00:00) just show date, else show date+time
+    if(hh==='00'&&mn==='00') return dd+'-'+mm+'-'+yy;
+    return dd+'-'+mm+'-'+yy+' '+hh+':'+mn;
+  }catch(e){return String(s);}
+}
+function fmtDate(s){
+  // Converts any date string to dd-mm-yyyy
+  if(!s||s==='—') return '—';
+  try{
+    var dt=new Date(s);
+    if(isNaN(dt.getTime())) return s;
+    return String(dt.getDate()).padStart(2,'0')+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+dt.getFullYear();
+  }catch(e){return s;}
 }
 function toast(msg,ms){
   ms=ms||3500; var t=el('toast-msg'); t.textContent=msg; t.classList.add('on');
@@ -666,7 +684,7 @@ function _bMakeXL(d){
       '<div id="sm-result" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:7px;font-size:13px;font-weight:700;text-align:center"></div>' +
       '<div style="display:flex;gap:10px">' +
         '<button onclick="smClose()" style="flex:1;padding:11px;border-radius:8px;background:rgba(231,76,60,.15);border:1px solid var(--er);color:var(--er);font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✖ Close</button>' +
-        '<button onclick="smSubmit()" style="flex:2;padding:11px;border-radius:8px;background:var(--teal);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✅ Confirm Settlement</button>' +
+        '<button id="sm-confirm-btn" onclick="smSubmit()" style="flex:2;padding:11px;border-radius:8px;background:var(--teal);border:none;color:#000;font-family:Rajdhani,sans-serif;font-size:14px;font-weight:700;cursor:pointer">✅ Confirm Settlement</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(modal);
@@ -708,39 +726,42 @@ function smSubmit() {
   var notes = document.getElementById('sm-notes').value.trim();
   if (amt <= 0) { alert('Enter payment amount'); return; }
 
-  var btn = document.querySelector('#settle-modal button:last-child');
-  btn.textContent = '⟳ Processing…';
-  btn.disabled = true;
+  // Use id to find button reliably
+  var btn = document.getElementById('sm-confirm-btn');
+  var res = document.getElementById('sm-result');
+  if(btn){ btn.textContent = '⟳ Processing…'; btn.disabled = true; }
 
   fetch(API, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({action: 'settlePayment', billNo: _smBillNo, payAmount: amt, notes: notes, type: _smType})
-  }).then(function(r){ return r.json(); }).then(function(d){
-    btn.textContent = '✅ Confirm Settlement';
-    btn.disabled = false;
-    var res = document.getElementById('sm-result');
+    body: JSON.stringify({action:'settlePayment', billNo:_smBillNo, payAmount:amt, notes:notes, type:_smType||'DISPATCH'})
+  }).then(function(r){ return r.json(); })
+  .then(function(d){
+    if(btn){ btn.textContent = '✅ Confirm Settlement'; btn.disabled = false; }
     res.style.display = 'block';
     if (d && d.status === 'ok') {
       var paid = Number(d.newBalance) <= 0;
-      res.style.background = paid ? 'rgba(46,204,113,.15)' : 'rgba(243,156,18,.15)';
+      res.style.background = paid ? 'rgba(46,204,113,.2)' : 'rgba(243,156,18,.2)';
       res.style.color      = paid ? 'var(--ok)' : 'var(--wn)';
-      res.textContent      = paid ? '✅ FULLY PAID! Payment cleared.' : '⚠ Partial — Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
+      res.style.fontWeight = '700';
+      res.textContent = paid ? '✅ FULLY PAID! Balance cleared.' : '⚠ Partial paid. Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
       setTimeout(function(){
         smClose();
-        loadPending(); // refresh panel
-      }, 2000);
+        loadPending();
+        // Also refresh missing tab if it's active
+        var mp = document.getElementById('pane-missing');
+        if(mp && mp.classList.contains('on')) loadMissing();
+      }, 1500);
     } else {
-      res.style.background = 'rgba(231,76,60,.15)';
-      res.style.color      = 'var(--er)';
-      res.textContent      = '⚠ Error: ' + (d ? d.message : 'Unknown error');
+      res.style.background = 'rgba(231,76,60,.2)';
+      res.style.color = 'var(--er)';
+      res.style.fontWeight = '700';
+      res.textContent = '⚠ Failed: ' + (d && d.message ? d.message : 'Server error — please retry');
     }
   }).catch(function(e){
-    btn.textContent = '✅ Confirm Settlement';
-    btn.disabled = false;
-    var res = document.getElementById('sm-result');
+    if(btn){ btn.textContent = '✅ Confirm Settlement'; btn.disabled = false; }
     res.style.display = 'block';
-    res.style.background = 'rgba(231,76,60,.15)';
+    res.style.background = 'rgba(231,76,60,.2)';
     res.style.color = 'var(--er)';
     res.textContent = '⚠ Network error: ' + e.message;
   });
@@ -815,7 +836,7 @@ function loadMissing(){
                 '</td></tr>';
             }).join('')+
             '</table>'+
-            '<button onclick="doRestore('+ri+')" style="margin-top:10px;padding:8px 18px;background:var(--ok);color:#000;border:none;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">✅ Restore to Inventory</button>'+
+            '<button id="restore-btn-'+ri+'" onclick="doRestore('+ri+')" style="margin-top:10px;padding:8px 18px;background:var(--ok);color:#000;border:none;border-radius:6px;font-family:Rajdhani,sans-serif;font-weight:700;font-size:13px;cursor:pointer">✅ Restore to Inventory</button>'+
             '<input placeholder="Notes (optional)" id="rest-notes-'+ri+'" style="margin-top:8px;width:100%;background:#1a1200;border:1px solid #2a1a00;border-radius:6px;color:var(--tx);padding:8px 12px;font-size:12px;font-family:inherit;outline:none">'+
             '</div>';
         }
@@ -861,16 +882,38 @@ function doRestore(ri){
   });
   if(!items.length){ toast('⚠ Enter restore qty for at least one item'); return; }
   var notes = (document.getElementById('rest-notes-'+ri)||{}).value||'';
+
+  // Disable button immediately to prevent double-click
+  var restBtn = document.getElementById('restore-btn-'+ri);
+  if(restBtn){ restBtn.disabled=true; restBtn.textContent='⟳ Restoring…'; }
+
   fetch(API, {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({action:'restoreMissing', returnBillNo: r.returnBillNo, items: items, notes: notes})
   }).then(function(res){ return res.json(); }).then(function(d){
     if(d && d.status==='ok'){
       toast('✅ Items restored to inventory!');
+      // Zero out qty inputs so they cannot be re-submitted
+      missItems.forEach(function(m, ii){
+        var inp = document.getElementById('rest-'+ri+'-'+ii);
+        if(inp){ inp.value='0'; inp.disabled=true; }
+      });
+      if(restBtn){ restBtn.textContent='✅ Restored'; restBtn.style.background='#555'; }
+      // Remove this entry from cache so it won't show again
       var card = document.getElementById('miss-card-'+ri);
-      if(card) card.style.opacity='0.5';
-      setTimeout(loadMissing, 1500);
-    } else { toast('⚠ '+(d?d.message:'Error')); }
-  }).catch(function(e){ toast('⚠ '+e.message); });
+      if(card){
+        card.style.transition='opacity .5s';
+        card.style.opacity='0.4';
+        card.style.pointerEvents='none';
+      }
+      setTimeout(loadMissing, 2000);
+    } else {
+      toast('⚠ '+(d && d.message ? d.message : 'Error'));
+      if(restBtn){ restBtn.disabled=false; restBtn.textContent='✅ Restore to Inventory'; }
+    }
+  }).catch(function(e){
+    toast('⚠ '+e.message);
+    if(restBtn){ restBtn.disabled=false; restBtn.textContent='✅ Restore to Inventory'; }
+  });
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
