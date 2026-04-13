@@ -97,7 +97,7 @@ nav a:hover{border-color:var(--gold);color:var(--gold)}
     </div>
   </div>
   <nav>
-    <a href="https://sites.google.com/view/garudakavi/gcs-inventory" target="_blank">🏗️ GCS Inventory</a>
+    <a href="https://sites.google.com/view/garudakavi/billing-page" target="_blank">🏗️ GCS Inventory</a>
     
   </nav>
 </header>
@@ -653,11 +653,10 @@ function _bMakeXL(d){
   toast('✅ Excel downloaded — all 4 sheets!');
 }
 
-</script>
-</body>
-</html>
 
-<script>
+
+// ━━━━ SETTLE + MISSING + RESTORE + EXCEL ━━━━
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SETTLE PAYMENT — bill.html
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -744,19 +743,22 @@ function smSubmit() {
       res.style.background = paid ? 'rgba(46,204,113,.2)' : 'rgba(243,156,18,.2)';
       res.style.color      = paid ? 'var(--ok)' : 'var(--wn)';
       res.style.fontWeight = '700';
-      res.textContent = paid ? '✅ FULLY PAID! Balance cleared.' : '⚠ Partial paid. Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
+      res.textContent = paid
+        ? '✅ FULLY PAID! Balance cleared.'
+        : '⚠ Partial paid. Remaining: ₹' + Number(d.newBalance).toLocaleString('en-IN');
       setTimeout(function(){
         smClose();
         loadPending();
-        // Also refresh missing tab if it's active
         var mp = document.getElementById('pane-missing');
         if(mp && mp.classList.contains('on')) loadMissing();
       }, 1500);
     } else {
+      var errMsg = (d && d.message) ? d.message : (d ? JSON.stringify(d) : 'No response from server');
       res.style.background = 'rgba(231,76,60,.2)';
       res.style.color = 'var(--er)';
       res.style.fontWeight = '700';
-      res.textContent = '⚠ Failed: ' + (d && d.message ? d.message : 'Server error — please retry');
+      res.textContent = '⚠ ' + errMsg;
+      console.error('settlePayment error:', d);
     }
   }).catch(function(e){
     if(btn){ btn.textContent = '✅ Confirm Settlement'; btn.disabled = false; }
@@ -771,9 +773,9 @@ function smSubmit() {
 document.getElementById('settle-modal').addEventListener('click', function(e){
   if (e.target === this) smClose();
 });
-</script>
 
-<script>
+
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MISSING MATERIALS TAB
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -892,22 +894,22 @@ function doRestore(ri){
   }).then(function(res){ return res.json(); }).then(function(d){
     if(d && d.status==='ok'){
       toast('✅ Items restored to inventory!');
-      // Zero out qty inputs so they cannot be re-submitted
-      missItems.forEach(function(m, ii){
-        var inp = document.getElementById('rest-'+ri+'-'+ii);
-        if(inp){ inp.value='0'; inp.disabled=true; }
-      });
-      if(restBtn){ restBtn.textContent='✅ Restored'; restBtn.style.background='#555'; }
-      // Remove this entry from cache so it won't show again
+      // Mark card as done immediately
       var card = document.getElementById('miss-card-'+ri);
       if(card){
-        card.style.transition='opacity .5s';
-        card.style.opacity='0.4';
-        card.style.pointerEvents='none';
+        card.innerHTML = '<div style="padding:14px;color:var(--ok);font-weight:700;text-align:center">✅ Restored successfully — inventory updated</div>';
+        card.style.borderColor = 'var(--ok)';
+        card.style.opacity = '0.7';
       }
-      setTimeout(loadMissing, 2000);
+      // Remove from cache so it won't be submitted again
+      _missCache = _missCache.filter(function(x,xi){
+        var filtered = _missCache.filter(function(y){ return (y.missingItems||[]).length > 0 || Number(y.finalBalance) > 0; });
+        return filtered[ri] !== x;
+      });
+      setTimeout(loadMissing, 1500);
     } else {
-      toast('⚠ '+(d && d.message ? d.message : 'Error'));
+      var em = (d && d.message) ? d.message : 'Error';
+      toast('⚠ ' + em);
       if(restBtn){ restBtn.disabled=false; restBtn.textContent='✅ Restore to Inventory'; }
     }
   }).catch(function(e){
@@ -991,4 +993,8 @@ function _bMakeXL(d){
   XLSX.writeFile(wb, 'GCS_Data_'+new Date().toLocaleDateString('en-IN').replace(/\//g,'-')+'.xlsx');
   toast('✅ Excel downloaded — 6 sheets with full product details!');
 }
+
+
 </script>
+</body>
+</html>
