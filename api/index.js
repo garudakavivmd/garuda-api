@@ -145,7 +145,7 @@ async function getReturns(req,res) {
     const retItems = (r.return_items||[]).map(i=>({name:i.product,qty:Number(i.qty)||0,group:i.group_type||'MAIN'}));
     let missingItems = [];
     try {
-      const orig = await sb(`sales?bill_no=eq."${r.original_bill_no}"&select=sale_items(*)`);
+      const orig = await sb(`sales?bill_no=eq.${r.original_bill_no}&select=sale_items(*)`);
       if (orig.length && orig[0].sale_items) {
         orig[0].sale_items.forEach(si=>{
           const ret    = retItems.find(ri=>ri.name.trim().toLowerCase()===si.product.trim().toLowerCase());
@@ -238,7 +238,7 @@ async function addReturn(data,res) {
     await updateInv(it.name, it.group||'MAIN', 'in_qty', Number(it.qty)||0);
   }
   try {
-    const sr = await sb(`sales?bill_no=eq."${data.originalBillNo}"&select=id,balance`);
+    const sr = await sb(`sales?bill_no=eq.${data.originalBillNo}&select=id,balance`);
     if (sr.length) {
       const nb = Math.max(0,(Number(sr[0].balance)||0)-(Number(data.additionalPay)||0));
       await sb(`sales?id=eq.${sr[0].id}`,'PATCH',{balance:nb,status:nb<=0?'PAID':'PENDING'});
@@ -254,13 +254,13 @@ async function settlePayment(data,res) {
     const paid = Number(payAmount)||0;
     let oldBal=0,newBal=0,customer='',phone='';
     if (type==='RETURN') {
-      const rows = await sb(`returns?return_bill_no=eq."${billNo}"&select=id,final_balance,customer,phone`);
+      const rows = await sb(`returns?return_bill_no=eq.${billNo}&select=id,final_balance,customer,phone`);
       if (!rows.length) return err(res,'Return bill not found: '+billNo);
       customer=rows[0].customer; phone=rows[0].phone;
       oldBal=Number(rows[0].final_balance)||0; newBal=Math.max(0,oldBal-paid);
       await sb(`returns?id=eq.${rows[0].id}`,'PATCH',{final_balance:newBal,status:newBal<=0?'FULLY PAID':'BALANCE DUE'});
     } else {
-      const rows = await sb(`sales?bill_no=eq."${billNo}"&select=id,balance,customer,phone`);
+      const rows = await sb(`sales?bill_no=eq.${billNo}&select=id,balance,customer,phone`);
       if (!rows.length) return err(res,'Bill not found: '+billNo);
       customer=rows[0].customer; phone=rows[0].phone;
       oldBal=Number(rows[0].balance)||0; newBal=Math.max(0,oldBal-paid);
@@ -284,7 +284,7 @@ async function restoreMissing(data,res) {
     //    Find each return_item and increase its qty by the restored amount
     if (returnBillNo) {
       // Fetch all return_items for this bill, then match in JS (avoids URL encoding issues)
-      const allRetItems = await sb(`return_items?return_bill_no=eq."${returnBillNo}"&select=id,product,qty`);
+      const allRetItems = await sb(`return_items?return_bill_no=eq.${returnBillNo}&select=id,product,qty`);
       for (const item of (items||[])) {
         const pLow = item.name.trim().toLowerCase();
         const found = allRetItems.find(ri => (ri.product||'').trim().toLowerCase() === pLow);
@@ -297,7 +297,7 @@ async function restoreMissing(data,res) {
       }
 
       // 3. Update return record notes + status
-      const rows = await sb(`returns?return_bill_no=eq."${returnBillNo}"&select=id,notes,final_balance`);
+      const rows = await sb(`returns?return_bill_no=eq.${returnBillNo}&select=id,notes,final_balance`);
       if (rows.length) {
         const note = `[Restored: ${items.map(i=>i.name+'×'+i.qty).join(', ')}${notes?' — '+notes:''}]`;
         // If final_balance is also 0, mark fully returned
